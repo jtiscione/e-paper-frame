@@ -1,0 +1,613 @@
+main = function(device_txt) {
+    console.log('device_txt', device_txt); // Prints "128x296 white/black/red"
+
+    let EPD_WIDTH = 128;
+    let EPD_HEIGHT = 296;
+    let AVAILABLE_COLORS = ['white', 'black'];
+
+    const dev_match = device_txt.match(/(\d+)x(\d+)\s([/\w]+)/);
+    if (dev_match) {
+        EPD_WIDTH = parseInt(dev_match[1]) || 128;
+        EPD_HEIGHT = parseInt(dev_match[2]) || 296;
+        AVAILABLE_COLORS = dev_match[3].split('/'); // white/black/red/orange/yellow/green/blue
+    }
+
+    document.getElementById('caption').innerHTML = device_txt;
+
+    const PALETTE_COLORS = {
+        white: [0xff, 0xff, 0xff],
+        black: [0x00, 0x00, 0x00],
+        red: [0xff, 0x00, 0x00],
+        orange: [0xf1, 0x65, 0x29],
+        yellow: [0xff, 0xff, 0x00],
+        green: [0x00, 0xff, 0x00],
+        blue: [0x00, 0x00, 0xff],
+    };
+
+    const sidewaysCheckbox = document.getElementById('sideways-checkbox');
+    const pane = document.getElementById('pane');
+    let SIDEWAYS = (EPD_HEIGHT > EPD_WIDTH);
+    if (SIDEWAYS) {
+        pane.style.transform = 'rotate(-90deg)';
+        sidewaysCheckbox.checked = true;
+    }
+    sidewaysCheckbox.addEventListener('change', (event) => {
+        if (event.currentTarget.checked) {
+            pane.style.transform = 'rotate(-90deg)';
+            SIDEWAYS = true;
+        } else {
+            pane.style.transform = 'rotate(0)';
+            SIDEWAYS = false;
+        }
+    });
+
+    const mainCanvas = document.getElementById('main-canvas');
+    mainCanvas.width = EPD_WIDTH;
+    mainCanvas.height = EPD_HEIGHT;
+    const mainContext = mainCanvas.getContext('2d');
+    mainContext.fillStyle = 'white';
+    mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+    const draggableCanvas = document.getElementById('draggable-canvas');
+    const draggableContext = draggableCanvas.getContext('2d');
+
+    const workCanvas = document.getElementById('work-canvas');
+    workCanvas.style.display = 'block';
+    workCanvas.width = EPD_WIDTH;
+    workCanvas.height = EPD_HEIGHT;
+    workCanvas.style.top = `${mainCanvas.offsetTop}px`;
+    workCanvas.style.left = `${mainCanvas.offsetLeft}px`;
+    const workContext = workCanvas.getContext('2d');
+
+    const scaleSlider = document.getElementById('scale');
+    const applyPasteButton = document.getElementById('apply-paste');
+    const cancelPasteButton = document.getElementById('cancel-paste');
+
+    const strokeWidthSlider = document.getElementById('stroke-width-slider');
+    const strokeWidthValueIndicator = document.getElementById('stroke-width-value');
+    strokeWidthValueIndicator.innerHTML = strokeWidthSlider.value;
+
+    const paintButton = document.getElementById('paint-button');
+    const drawBoxButton = document.getElementById('draw-box-button');
+    const fillBoxButton = document.getElementById('fill-box-button');
+    const textButton = document.getElementById('text-button');
+    const clearButton = document.getElementById('clear-button');
+    const postButton = document.getElementById('post-button');
+
+    const fontNameSelect = document.getElementById('font-name-select');
+    const fontSizeSelect = document.getElementById('font-size-select');
+
+    const APP_MODES = {
+        DEFAULT: 'DEFAULT',
+        PASTE_OPERATION: 'PASTE_OPERATION',
+        DRAWING: 'DRAWING',
+        DRAW_BOX: 'DRAW_BOX',
+        FILL_BOX: 'FILL_BOX',
+        TEXT: 'TEXT',
+    };
+
+    let appMode = APP_MODES.DEFAULT;
+
+    let pastedImage = undefined;
+    let scalingFactor = 1.0;
+
+    let selectedColor = 'black';
+    let strokeWidth = parseInt(strokeWidthSlider.value);
+
+    let fontName = 'Helvetica';
+    let fontSize = '12pt';
+    let text = '';
+
+    // draggableCanvas is draggable if visible
+    let dragging = false;
+    let draggableMouseDownX = null;
+    let draggableMouseDownY = null;
+
+    draggableCanvas.addEventListener('mousedown', (e) => {
+        dragging = true;
+        let { x, y } = e;
+        if (SIDEWAYS) {
+            y = e.x;
+            x = -e.y;
+        }
+        draggableMouseDownX = x;
+        draggableMouseDownY = y;
+        draggableCanvas.style.cursor = 'grabbing';
+    });
+    draggableCanvas.addEventListener('mousemove', (e) => {
+        if (dragging) {
+            let { x, y } = e;
+            if (SIDEWAYS) {
+                y = e.x;
+                x = -e.y;
+            }
+            draggableCanvas.style.top = `${draggableCanvas.offsetTop + y - draggableMouseDownY}px`;
+            draggableCanvas.style.left = `${draggableCanvas.offsetLeft + x - draggableMouseDownX}px`
+            draggableMouseDownY = y;
+            draggableMouseDownX = x;
+        }
+    });
+    draggableCanvas.addEventListener('mouseup', (e) => {
+        dragging = false;
+        draggableMouseDownX = null;
+        draggableMouseDownY = null;
+        draggableCanvas.style.cursor = 'grab';
+    });
+
+    let mouseDownX = null;
+    let mouseDownY = null;
+
+    mainCanvas.addEventListener('mousedown', (e) => {
+        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAWING || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.FILL_BOX) {
+            mouseDownX = e.offsetX;
+            mouseDownY = e.offsetY;
+            if (appMode === APP_MODES.DRAWING) {
+                mainContext.fillStyle = selectedColor;
+                mainContext.beginPath();
+                mainContext.arc(mouseDownX, mouseDownY, strokeWidth / 2, 0, 2 * Math.PI);
+                mainContext.closePath();
+                mainContext.fill();
+            }
+        } else if (appMode === APP_MODES.TEXT) {
+            draggableCanvas.style.top = `${mainCanvas.offsetTop + e.offsetY}px`;
+            draggableCanvas.style.left = `${mainCanvas.offsetLeft + e.offsetX}px`;
+            drawTextOnDraggableCanvas();
+        }
+    });
+
+    mainCanvas.addEventListener('mousemove', (e) => {
+        if (appMode === APP_MODES.DRAWING) {
+            if (mouseDownX && mouseDownY) {
+                mainContext.strokeStyle = selectedColor;
+                mainContext.lineWidth = strokeWidth;
+                mainContext.beginPath();
+                mainContext.moveTo(mouseDownX, mouseDownY);
+                mainContext.lineTo(e.offsetX, e.offsetY);
+                mainContext.closePath();
+                mainContext.stroke();
+                mouseDownX = e.offsetX;
+                mouseDownY = e.offsetY;
+            }
+        } else if (appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.FILL_BOX) {
+            if (mouseDownX && mouseDownY) {
+                workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
+                if (appMode === APP_MODES.DRAW_BOX) {
+                    workContext.strokeStyle = selectedColor;
+                    workContext.lineWidth = strokeWidth;
+                    workContext.strokeRect(mouseDownX, mouseDownY, e.offsetX - mouseDownX, e.offsetY - mouseDownY);
+                } else {
+                    workContext.fillStyle = selectedColor;
+                    workContext.fillRect(mouseDownX, mouseDownY, e.offsetX - mouseDownX, e.offsetY - mouseDownY);
+                }
+            }
+        }
+    });
+
+    const mouseUpListener = (e) => {
+        mouseDownX = undefined;
+        mouseDownY = undefined;
+        mainContext.drawImage(workCanvas, 0, 0);
+        workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
+    }
+    mainCanvas.addEventListener('mouseleave', mouseUpListener);
+
+    mainCanvas.addEventListener('mouseup', mouseUpListener);
+
+    function setAppMode(mode) {
+        // console.log(`changing setAppMode from ${appMode} to ${mode}`);
+        appMode = mode;
+        scaleSlider.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
+        applyPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
+        cancelPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
+        // palette_buttons.forEach((button) => { button.disabled = (appMode === APP_MODES.PASTE_OPERATION);});
+        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING) {
+            draggableCanvas.style.display = 'none';
+        }
+        sidewaysCheckbox.disabled = (appMode === APP_MODES.TEXT);
+        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION);
+        if (appMode === APP_MODES.TEXT) {
+            text = '';
+            draggableCanvas.style.top = `${mainCanvas.offsetTop}px`;
+            draggableCanvas.style.left = `${mainCanvas.offsetLeft}px`;
+            draggableCanvas.width = 0; // for now
+            draggableCanvas.height = 0; // for now
+            draggableCanvas.style.display = 'block';
+        }
+        mainCanvas.style.cursor = (appMode !== APP_MODES.TEXT ? 'crosshair' : 'text');
+
+        const c_names = (mode) => (appMode === mode ? 'toolbar-button toolbar-button-selected' : 'toolbar-button');
+
+        paintButton.className = c_names(APP_MODES.DRAWING);
+        drawBoxButton.className = c_names(APP_MODES.DRAW_BOX);
+        fillBoxButton.className = c_names(APP_MODES.FILL_BOX);
+        textButton.className = c_names(APP_MODES.TEXT);
+
+        fontNameSelect.disabled = (appMode !== APP_MODES.TEXT);
+        fontSizeSelect.disabled = (appMode !== APP_MODES.TEXT);
+    }
+
+    function findClosestPaletteColor(r, g, b) {
+        // This is a really crude version
+        let lowestColor = undefined;
+        let lowestDistance = 1000;
+        AVAILABLE_COLORS.forEach((color) => {
+            const [paletteRed, paletteGreen, paletteBlue] = PALETTE_COLORS[color];
+            const distance = Math.sqrt((r - paletteRed) * (r - paletteRed) + (g - paletteGreen) * (g - paletteGreen) + (b - paletteBlue) * (b - paletteBlue));
+            // faster: const distance = Math.abs(r - paletteRed) + Math.abs(g - paletteGreen) + Math.abs(b - paletteBlue);
+            if (distance < lowestDistance) {
+                lowestColor = color;
+                lowestDistance = distance;
+            }
+        });
+        return lowestColor;
+    }
+
+    function distributeErrorToNeighbors(imgData, width, index, error) {
+        const len = imgData.length;
+        let target_index = index + 4;
+        if (target_index < len) {
+            imgData[target_index] += (error * 7) >> 4;
+        }
+        target_index = index + 4 * (width - 1);
+        if (target_index < len) {
+            imgData[target_index] += (error * 3) >> 4;
+        }
+        target_index = index + 4 * width;
+        if (target_index < len) {
+            imgData[target_index] += (error * 5) >> 4;
+        }
+        target_index = index + 4 * (width + 1)
+        if (target_index < len) {
+            imgData[target_index] += error > 4;
+        }
+    }
+
+    function performDither(canvas, context) {
+        // dithers the contents of the canvas; sets each pixel to one of AVAILABLE_COLORS
+        const { width, height } = canvas;
+        const imgData = context.getImageData(0,0, width, height);
+        const data = imgData.data;
+        // let allDataZero = true;
+        // Apply Floyd-Steinberg dithering algorithm
+        let index = 0
+        for (let j = 0; j < height; j++) {
+            for (let i = 0; i < width; i++) {
+                const red = data[index];
+                const green = data[index + 1];
+                const blue = data[index + 2];
+                // allDataZero &= (red === 0 && green === 0 && blue === 0);
+                const [ new_red, new_green, new_blue] = PALETTE_COLORS[findClosestPaletteColor(red, green, blue)];
+                data[index] = new_red;
+                data[index + 1] = new_green;
+                data[index + 2] = new_blue;
+                const error_red = red - new_red;
+                const error_green = green - new_green;
+                const error_blue = blue - new_blue;
+                distributeErrorToNeighbors(data, width, index, error_red);
+                distributeErrorToNeighbors(data, width,index + 1, error_green);
+                distributeErrorToNeighbors(data, width,index + 2, error_blue);
+                index += 4;
+            }
+        }
+        // console.log('allDataZero', allDataZero);
+        context.putImageData(imgData, 0, 0);
+    }
+
+    function extractHLSBFromCanvas(canvas) {
+        const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
+        const buffer = imageData.data.buffer;  // ArrayBuffer
+        const byteBuffer = new Uint8ClampedArray(buffer);
+
+        const black_MONO_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
+        const red_MONO_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
+
+        let buffer_index = 0;
+        let hlsb_index = 0;
+        let bitshift = 7;
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const red = byteBuffer[buffer_index++]
+                const green = byteBuffer[buffer_index++]
+                const blue = byteBuffer[buffer_index++];
+                const alpha = byteBuffer[buffer_index++];
+                const color = findClosestPaletteColor(red, green, blue, alpha);
+                let hlsb = undefined;
+                if (color === 'black') {
+                    hlsb = black_MONO_HLSB
+                }
+                if (color === 'red') {
+                    hlsb = red_MONO_HLSB;
+                }
+                if (hlsb) {
+                    hlsb[hlsb_index] |= (1 << bitshift);
+                }
+                if (bitshift === 0) {
+                    bitshift += 8;
+                    hlsb_index++;
+                }
+                bitshift--;
+            }
+        }
+        for (let index = 0; index < black_MONO_HLSB.length; index++) {
+            black_MONO_HLSB[index] = ~black_MONO_HLSB[index]
+            red_MONO_HLSB[index] = ~red_MONO_HLSB[index]
+        }
+        const b64_encoded_black = btoa(String.fromCharCode.apply(null, black_MONO_HLSB))
+        const b64_encoded_red = btoa(String.fromCharCode.apply(null, red_MONO_HLSB))
+        return {
+            black: b64_encoded_black,
+            red: b64_encoded_red,
+        };
+    }
+
+    const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
+
+    // This code works fine for a 128x296 display, but there isn't going to be enough memory for larger displays.
+    // A single color's HLSB buffer goes from 4736 bytes here to 33600 bytes which requires 44688 base64 characters.
+    // This code will need to be modified to send each buffer individually in its own HTTP POST call,
+    // in the same order that the RP2040 is streaming them to the SPI channel.
+    // Each individual POST may need to be further broken up into segments.
+    function uploadCanvas() {
+        const info = extractHLSBFromCanvas(document.getElementById('main-canvas'));
+        console.log('HLSB monochrome buffers', info);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState >= 0 && xhr.readyState < 5) {
+                console.log(`${READY_STATES[xhr.readyState]} ${xhr.status}`);
+            }
+        };
+        xhr.onload = () => console.log('onload responseText', xhr.responseText);
+        xhr.send(`black=${info.black}&red=${info.red}`);
+    }
+
+    //on paste INTO the canvas
+    function paste_auto(e) {
+        if (e.clipboardData) {
+            let items = e.clipboardData.items;
+            if (!items) {
+                return;
+            }
+            //access data directly
+            let is_image = false;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    //image
+                    setAppMode(APP_MODES.PASTE_OPERATION);
+                    let blob = items[i].getAsFile();
+                    let URLObj = window.URL || window.webkitURL;
+                    let source = URLObj.createObjectURL(blob);
+                    paste_createImage(source);
+                    is_image = true;
+                }
+            }
+            if(is_image){
+                e.preventDefault();
+            }
+        }
+    }
+
+    //draw externally pasted image to draggableCanvas
+    function paste_createImage(source) {
+        pastedImage = new Image();
+        pastedImage.onload = function () {
+            let pastedImageWidth = pastedImage.width;
+            let pastedImageHeight = pastedImage.height;
+            if (SIDEWAYS) {
+                const swap = pastedImageHeight;
+                pastedImageHeight = pastedImageWidth;
+                pastedImageWidth = swap;
+            }
+            if (pastedImageWidth / pastedImageHeight > mainCanvas.width / mainCanvas.height) {
+                scalingFactor = mainCanvas.width / pastedImageWidth;
+                draggableCanvas.width = mainCanvas.width;
+                draggableCanvas.height = pastedImageHeight * scalingFactor;
+                draggableCanvas.style.left = "0px"; // `${canvas.offsetLeft}px`;
+                draggableCanvas.style.top = "0px"; // `${canvas.offsetTop + (canvas.height - draggableCanvas.height) / 2}px`;
+            } else {
+                scalingFactor = mainCanvas.height / pastedImageHeight;
+                draggableCanvas.height = mainCanvas.height;
+                draggableCanvas.width = pastedImageWidth * scalingFactor;
+                draggableCanvas.style.left = "0px"; // `${canvas.offsetLeft + (canvas.width - draggableCanvas.width) / 2}px`;
+                draggableCanvas.style.top = "0px"; // `${canvas.offsetTop}px`;
+            }
+            scaleSlider.value = 100 * scalingFactor;
+            if (SIDEWAYS) {
+                draggableContext.save();
+                draggableContext.translate(draggableCanvas.width / 2, draggableCanvas.height / 2);
+                draggableContext.rotate(Math.PI / 2);
+                draggableContext.drawImage(pastedImage, -draggableCanvas.height / 2, -draggableCanvas.width / 2, draggableCanvas.height, draggableCanvas.width);
+                draggableContext.restore();
+            } else {
+                draggableContext.drawImage(pastedImage, 0, 0, draggableCanvas.width, draggableCanvas.height);
+            }
+
+            performDither(draggableCanvas, draggableContext);
+            draggableCanvas.style.display = 'block';
+        }
+        pastedImage.src = source;
+    }
+
+    function adjustScalingFactor(s) {
+        scalingFactor = s;
+        if (SIDEWAYS) {
+            draggableCanvas.width = pastedImage.height * scalingFactor;
+            draggableCanvas.height = pastedImage.width * scalingFactor;
+            draggableContext.save();
+            draggableContext.translate(draggableCanvas.width / 2, draggableCanvas.height / 2);
+            draggableContext.rotate(Math.PI / 2);
+            draggableContext.drawImage(pastedImage, -draggableCanvas.height / 2, -draggableCanvas.width / 2, draggableCanvas.height, draggableCanvas.width);
+            draggableContext.restore();
+        } else {
+            draggableCanvas.width = pastedImage.width * scalingFactor;
+            draggableCanvas.height = pastedImage.height * scalingFactor;
+            draggableContext.drawImage(pastedImage, 0, 0, draggableCanvas.width, draggableCanvas.height);
+        }
+        performDither(draggableCanvas, draggableContext);
+    }
+
+    document.addEventListener('paste', function (e) {
+        paste_auto(e);
+    }, false);
+
+    scaleSlider.addEventListener('input', (e) => {
+        if (appMode === APP_MODES.PASTE_OPERATION) {
+            const scale = parseInt(e.target.value) / 100;
+            adjustScalingFactor(scale);
+        }
+    });
+
+    strokeWidthSlider.addEventListener('input', (e) => {
+        strokeWidth = parseInt(e.target.value);
+        strokeWidthValueIndicator.innerHTML = e.target.value;
+    });
+
+    const transferDraggableToMain = () => {
+        if (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT) {
+            mainContext.drawImage(draggableCanvas, draggableCanvas.offsetLeft - mainCanvas.offsetLeft, draggableCanvas.offsetTop - mainCanvas.offsetTop);
+            performDither(mainCanvas, mainContext);
+            setAppMode(APP_MODES.DEFAULT);
+        }
+    }
+
+    applyPasteButton.addEventListener('click', transferDraggableToMain);
+
+    cancelPasteButton.addEventListener('click', (e) => {
+        setAppMode(APP_MODES.DEFAULT);
+    });
+
+    Array.prototype.forEach.call(document.getElementsByClassName('palette-button'), function(button) {
+        if (AVAILABLE_COLORS.indexOf(button.id) < 0) {
+            button.style.display = 'none';
+        } else {
+            button.addEventListener('click', (e) => {
+                document.getElementById(selectedColor).className="palette-button"; // removes palette-button-selected
+                selectedColor = button.id;
+                document.getElementById(selectedColor).className="palette-button palette-button-selected";
+                if (appMode === APP_MODES.TEXT) {
+                    drawTextOnDraggableCanvas();
+                }
+            });
+        }
+    });
+
+    paintButton.addEventListener('click', (e) => {
+        setAppMode(APP_MODES.DRAWING);
+    });
+
+    drawBoxButton.addEventListener('click', (e) => {
+        setAppMode(APP_MODES.DRAW_BOX);
+    });
+
+    fillBoxButton.addEventListener('click', (e) => {
+        setAppMode(APP_MODES.FILL_BOX);
+    });
+
+    textButton.addEventListener('click', (e) => {
+        setAppMode(APP_MODES.TEXT);
+    });
+
+    clearButton.addEventListener('click', (e) => {
+        workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
+        mainContext.fillStyle = 'white';
+        mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        setAppMode(APP_MODES.DEFAULT);
+    });
+
+    postButton.addEventListener('click', (e) => {
+        uploadCanvas();
+    });
+
+    function drawTextOnDraggableCanvas() {
+        const margin = 10; // pixels around text
+        draggableContext.font = `${fontSize} ${fontName}`;
+        const {
+            actualBoundingBoxAscent,
+            actualBoundingBoxDescent,
+            actualBoundingBoxLeft,
+            actualBoundingBoxRight
+        } = draggableContext.measureText(text);
+        const actualWidth = (actualBoundingBoxRight - actualBoundingBoxLeft);
+        const actualHeight = (actualBoundingBoxAscent + actualBoundingBoxDescent);
+        if (SIDEWAYS) {
+            draggableCanvas.width = 2 * margin + actualHeight;
+            draggableCanvas.height = 2 * margin + actualWidth;
+
+        } else {
+            draggableCanvas.width = 2 * margin + actualWidth;
+            draggableCanvas.height = 2 * margin + actualHeight;
+        }
+
+        draggableContext.font = `${fontSize} ${fontName}`; // have to do this again after setting size
+        draggableContext.fillStyle = selectedColor;
+        draggableContext.clearRect(0, 0, draggableCanvas.width, draggableCanvas.height);
+
+        if (SIDEWAYS) {
+            draggableContext.save();
+            draggableContext.rotate(Math.PI / 2);
+            draggableContext.translate(0, -(2 * margin) - actualHeight);
+            // draggableContext.translate(0, margin + actualHeight);
+            draggableContext.fillText(text, margin, margin + actualHeight);
+            draggableContext.restore();
+        } else {
+            draggableContext.fillText(text, margin, margin + actualHeight);
+        }
+    }
+
+    fontNameSelect.addEventListener('change', (e) => {
+       fontName = e.target.value;
+       drawTextOnDraggableCanvas();
+    });
+
+    fontSizeSelect.addEventListener('change', (e) => {
+        fontSize = e.target.value;
+        drawTextOnDraggableCanvas();
+    })
+
+    document.addEventListener('keydown', function (e) {
+        const { key, shiftKey } = e;
+        if (key === 'Escape') {
+            setAppMode(APP_MODES.DEFAULT);
+        }
+        if (appMode === APP_MODES.PASTE_OPERATION) {
+            if (key === 'Enter') {
+                transferDraggableToMain();
+            }
+        }
+        if (appMode === APP_MODES.TEXT) {
+            if (text.length > 0) {
+                if (key === 'Backspace') {
+                    text = text.substring(0, text.length - 1);
+                } else if (key === 'Enter') {
+                    transferDraggableToMain();
+                    return;
+                }
+            }
+            if (key.length === 1) {
+                text += key;
+            }
+            drawTextOnDraggableCanvas();
+        }
+    });
+}
+
+window.onload = function() {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            // The request is done; did it work?
+            if (xhr.status === 200) {
+                main(xhr.responseText);
+            } else {
+                main('');
+            }
+        }
+    };
+    xhr.open("GET", '/device.txt');
+    xhr.send();
+}
+
+// window.onload = main;
