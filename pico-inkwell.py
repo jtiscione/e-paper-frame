@@ -8,7 +8,7 @@ import time
 import rp2
 import gc
 import binascii
-from epd29 import EPD_2in9_B
+from epd import EPD_2in9_B
 
 def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
     startIndex = params.find(paramName+'=')
@@ -48,6 +48,9 @@ s.listen(1)
 
 print(f'Listening on {addr}')
 mem_info()
+
+epd = EPD_2in9_B()
+
 while True:
     try:
         cl, addr = s.accept()
@@ -61,7 +64,7 @@ while True:
             for i in range(len(request) - 3):
                 if(request[i] == 13 and request[i + 1] == 10 and request[i + 2] == 13 and request[i + 3] == 10):
                     # found frame start
-                    start = i + 4;
+                    start = i + 4
 
                     buffer = bytearray(2048)
                     buffer_index = 0
@@ -80,25 +83,35 @@ while True:
                     params = buffer.decode('ascii')
                     buffer = None
                     gc.collect()
-                    black = extract_urlencoded_param(params, 'black', True, False)
-                    red = extract_urlencoded_param(params, 'red', True, False)
+
+                    data = bytearray(binascii.a2b_base64(params))
                     params = None
                     gc.collect()
-                    cl.send('HTTP 1.0 200 OK\r\n')
+                    epd.process_data_block(data)
+                    cl.send('HTTP/1.0 200 OK\r\n')
                     cl.close()
                     mem_info()
+                    break
 
-                    epd = EPD_2in9_B()
-                    epd.set_buffers(black, red)
+                    # black = extract_urlencoded_param(params, 'black', True, False)
+                    # red = extract_urlencoded_param(params, 'red', True, False)
+                    # params = None
+                    # gc.collect()
+                    # cl.send('HTTP 1.0 200 OK\r\n')
+                    # cl.close()
+                    # mem_info()
+
+                    # epd = EPD_2in9_B()
+                    # epd.set_buffers(black, red)
                     # epd.buffer_black = black
                     # epd.buffer_red = red
-                    epd.display()
-                    epd.delay_ms(2000)
-                    print("sleep")
-                    epd.sleep()
-                    gc.collect()
-                    mem_info()
-                    break
+                    # epd.display()
+                    # epd.delay_ms(2000)
+                    # print("sleep")
+                    # epd.sleep()
+                    # gc.collect()
+                    # mem_info()
+                    # break
                             
         if len(request) > 0 and request[0] == 71: # 'G' for GET
             requestStr = request.decode('utf-8')

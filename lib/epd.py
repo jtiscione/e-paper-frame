@@ -20,6 +20,8 @@ class EPD:
         self.spi.init(baudrate=4000_000)
         self.dc_pin = Pin(DC_PIN, Pin.OUT)
 
+        self.data_block_count = 0
+
         self.init()
 
     def digital_write(self, pin, value):
@@ -70,7 +72,11 @@ class EPD:
     def sleep(self):
         pass
 
-class EPD_2in9B(EPD):
+    def process_data_block(self, data):
+        pass
+
+
+class EPD_2in9_B(EPD):
 
     def __init__(self):
         super().__init__(128, 296)
@@ -140,6 +146,27 @@ class EPD_2in9B(EPD):
 
         self.delay_ms(2000)
         self.module_exit()
+
+    def process_data_block(self, data):
+        if (self.data_block_count == 0):
+            self.init()
+            # black buffer
+            self.send_command(0x10)
+            for j in range(0, self.height):
+                for i in range(0, int(self.width // 8)):
+                    self.send_data(data[i + j * int(self.width // 8)])
+            self.data_block_count = 1
+        elif (self.data_block_count == 1):
+            # red buffer
+            self.send_command(0x13)
+            for j in range(0, self.height):
+                for i in range(0, int(self.width // 8)):
+                    self.send_data(data[i + j * int(self.width // 8)])
+
+            self.TurnOnDisplay()
+            self.data_block_count = 0
+            self.delay_ms(2000)
+            self.sleep()
 
 
 EPD_3IN7_lut_4Gray_GC = [
@@ -459,3 +486,57 @@ class EPD_3in7(EPD):
         self.send_command(0X02)  # power off
         self.send_command(0X07)  # deep sleep
         self.send_data(0xA5)
+
+
+    def process_data_block(self, data):
+        if (self.data_block_count == 0):
+            self.init()
+            # first buffer
+            self.send_command(0x49)
+            self.send_data(0x00)
+
+            self.send_command(0x4E)
+            self.send_data(0x00)
+            self.send_data(0x00)
+
+            self.send_command(0x4F)
+            self.send_data(0x00)
+            self.send_data(0x00)
+
+            self.send_command(0x24)
+
+            for j in range(0, self.height):
+                for i in range(0, int(self.width // 8)):
+                    self.send_data(data[i + j * int(self.width // 8)])
+
+            self.data_block_count = 1
+        elif (self.data_block_count == 1):
+            # second buffer
+            self.send_command(0x4E)
+            self.send_data(0x00)
+            self.send_data(0x00)
+
+            self.send_command(0x4F)
+            self.send_data(0x00)
+            self.send_data(0x00)
+
+            self.send_command(0x26)
+            
+            for j in range(0, self.height):
+                for i in range(0, int(self.width // 8)):
+                    self.send_data(data[i + j * int(self.width // 8)])
+
+            
+            self.Load_LUT(0)
+
+            self.send_command(0x22)
+            self.send_data(0xC7)
+
+            self.send_command(0x20)
+
+            self.ReadBusy()
+
+            # self.TurnOnDisplay()
+            self.data_block_count = 0
+            self.delay_ms(2000)
+            self.sleep()

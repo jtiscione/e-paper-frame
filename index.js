@@ -5,17 +5,38 @@ main = function(device_txt) {
     let EPD_HEIGHT = 296;
     let AVAILABLE_COLORS = ['white', 'black'];
 
-    const dev_match = device_txt.match(/(\d+)x(\d+)\s([/\w]+)/);
-    if (dev_match) {
-        EPD_WIDTH = parseInt(dev_match[1]) || 128;
-        EPD_HEIGHT = parseInt(dev_match[2]) || 296;
-        AVAILABLE_COLORS = dev_match[3].split('/'); // white/black/red/orange/yellow/green/blue
+    if (device_txt === 'EPD_2in9_B') {
+        // 128x296 white/black/red
+        // Two MONO_HLSB buffers (black first, red second)
+        // buffer_black = bytearray(self.height * self.width // 8)
+        // buffer_red = bytearray(self.height * self.width // 8)
+        // imageblack = framebuf.FrameBuffer(self.buffer_black, self.width, self.height, framebuf.MONO_HLSB)
+        // imagered = framebuf.FrameBuffer(self.buffer_red, self.width, self.height, framebuf.MONO_HLSB)
+        EPD_WIDTH = 128;
+        EPD_HEIGHT = 296;
+        AVAILABLE_COLORS = ['white', 'black', 'red'];
+    } else if (device_txt === 'EPD_3in7') {
+        // One single GS2_HMSB buffer, 4 colors.
+        // buffer_4Gray = bytearray(self.height * self.width // 4)
+        // FrameBuffer(buffer_4Gray, self.width, self.height, framebuf.GS2_HMSB)
+        EPD_WIDTH = 280;
+        EPD_HEIGHT = 480;
+        AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black'];
+    } else if (device_txt === 'EPD_5in65') {
+        // GS4_HMSB buffer, width * height // 2 bytes
+        // buffer = bytearray(self.height * self.width // 2)
+        // FrameBuffer(buffer, self.width, self.height, framebuf.GS4_HMSB)
+        EPD_WIDTH = 600;
+        EPD_HEIGHT = 480;
+        AVAILABLE_COLORS = ['white', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
     }
 
-    document.getElementById('caption').innerHTML = device_txt;
+   document.getElementById('caption').innerHTML = device_txt;
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],
+        lightgrey: [0xaa, 0xaa, 0xaa],
+        darkgrey: [0x55, 0x55, 0x55],
         black: [0x00, 0x00, 0x00],
         red: [0xff, 0x00, 0x00],
         orange: [0xf1, 0x65, 0x29],
@@ -262,12 +283,11 @@ main = function(device_txt) {
         }
     }
 
-    function performDither(canvas, context) {
+    function performDither(canvas, context, distributeError = true) {
         // dithers the contents of the canvas; sets each pixel to one of AVAILABLE_COLORS
         const { width, height } = canvas;
         const imgData = context.getImageData(0,0, width, height);
         const data = imgData.data;
-        // let allDataZero = true;
         // Apply Floyd-Steinberg dithering algorithm
         let index = 0
         for (let j = 0; j < height; j++) {
@@ -275,7 +295,6 @@ main = function(device_txt) {
                 const red = data[index];
                 const green = data[index + 1];
                 const blue = data[index + 2];
-                // allDataZero &= (red === 0 && green === 0 && blue === 0);
                 const [ new_red, new_green, new_blue] = PALETTE_COLORS[findClosestPaletteColor(red, green, blue)];
                 data[index] = new_red;
                 data[index + 1] = new_green;
@@ -283,23 +302,26 @@ main = function(device_txt) {
                 const error_red = red - new_red;
                 const error_green = green - new_green;
                 const error_blue = blue - new_blue;
-                distributeErrorToNeighbors(data, width, index, error_red);
-                distributeErrorToNeighbors(data, width,index + 1, error_green);
-                distributeErrorToNeighbors(data, width,index + 2, error_blue);
+                if (distributeError) {
+                    distributeErrorToNeighbors(data, width, index, error_red);
+                    distributeErrorToNeighbors(data, width,index + 1, error_green);
+                    distributeErrorToNeighbors(data, width,index + 2, error_blue);
+                }
                 index += 4;
             }
         }
-        // console.log('allDataZero', allDataZero);
         context.putImageData(imgData, 0, 0);
     }
 
-    function extractHLSBFromCanvas(canvas) {
+    function extractHLSBFromCanvasBlackRed(canvas, include_red=true) {
         const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
         const buffer = imageData.data.buffer;  // ArrayBuffer
         const byteBuffer = new Uint8ClampedArray(buffer);
 
         const black_MONO_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
-        const red_MONO_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
+        const red_MONO_HLSB = include_red
+            ? new Uint8Array((canvas.width >> 3) * canvas.height)
+            : undefined;
 
         let buffer_index = 0;
         let hlsb_index = 0;
@@ -316,7 +338,7 @@ main = function(device_txt) {
                 if (color === 'black') {
                     hlsb = black_MONO_HLSB
                 }
-                if (color === 'red') {
+                if (include_red && color === 'red') {
                     hlsb = red_MONO_HLSB;
                 }
                 if (hlsb) {
@@ -330,38 +352,86 @@ main = function(device_txt) {
             }
         }
         for (let index = 0; index < black_MONO_HLSB.length; index++) {
-            black_MONO_HLSB[index] = ~black_MONO_HLSB[index]
-            red_MONO_HLSB[index] = ~red_MONO_HLSB[index]
+            black_MONO_HLSB[index] = ~black_MONO_HLSB[index];
+            if (include_red) {
+                red_MONO_HLSB[index] = ~red_MONO_HLSB[index];
+            }
         }
         const b64_encoded_black = btoa(String.fromCharCode.apply(null, black_MONO_HLSB))
+        if (!include_red) {
+            return [ b64_encoded_black ];
+        }
         const b64_encoded_red = btoa(String.fromCharCode.apply(null, red_MONO_HLSB))
-        return {
-            black: b64_encoded_black,
-            red: b64_encoded_red,
-        };
+        return [
+            b64_encoded_black,
+            b64_encoded_red,
+        ];
     }
 
-    const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
+    function extractHLSBFromCanvasGray4(canvas) {
+        const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
+        const buffer = imageData.data.buffer;  // ArrayBuffer
+        const byteBuffer = new Uint8ClampedArray(buffer);
 
-    // This code works fine for a 128x296 display, but there isn't going to be enough memory for larger displays.
-    // A single color's HLSB buffer goes from 4736 bytes here to 33600 bytes which requires 44688 base64 characters.
-    // This code will need to be modified to send each buffer individually in its own HTTP POST call,
-    // in the same order that the RP2040 is streaming them to the SPI channel.
-    // Each individual POST may need to be further broken up into segments.
-    function uploadCanvas() {
-        const info = extractHLSBFromCanvas(document.getElementById('main-canvas'));
-        console.log('HLSB monochrome buffers', info);
+        const first_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
+        const second_HLSB = new Uint8Array((canvas.width >> 3) * canvas.height);
 
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState >= 0 && xhr.readyState < 5) {
-                console.log(`${READY_STATES[xhr.readyState]} ${xhr.status}`);
+        let buffer_index = 0;
+        let hlsb_index = 0;
+        let bitshift = 7;
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const red = byteBuffer[buffer_index++];
+                const green = byteBuffer[buffer_index++];
+                const blue = byteBuffer[buffer_index++];
+                const alpha = byteBuffer[buffer_index++];
+                const color = findClosestPaletteColor(red, green, blue, alpha);
+                if (color === 'white' || color === 'lightgrey') {
+                    first_HLSB[hlsb_index] |= (1 << bitshift);
+                }
+                if (color === 'white' || color === 'darkgrey') {
+                    second_HLSB[hlsb_index] |= (1 << bitshift);
+                }
+                if (bitshift === 0) {
+                    bitshift += 8;
+                    hlsb_index++;
+                }
+                bitshift--;
             }
-        };
-        xhr.onload = () => console.log('onload responseText', xhr.responseText);
-        xhr.send(`black=${info.black}&red=${info.red}`);
+        }
+        for (let index = 0; index < first_HLSB.length; index++) {
+            first_HLSB[index] = ~first_HLSB[index];
+            second_HLSB[index] = ~second_HLSB[index];
+        }
+        return [
+            btoa(String.fromCharCode.apply(null, first_HLSB)),
+            btoa(String.fromCharCode.apply(null, second_HLSB)),
+        ];
+    }
+
+    // const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
+    async function sequentialPost(buffers) {
+        for (let i=0; i < buffers.length; i++) {
+           const response = await fetch('/', {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/x-www-form-urlencoded',
+               },
+               body: buffers[i],
+           });
+           console.log(response.statusText);
+        }
+    }
+
+    async function uploadCanvas() {
+        if (device_txt === 'EPD_2in9_B') {
+            const [black, red] = extractHLSBFromCanvasBlackRed(document.getElementById('main-canvas'));
+            sequentialPost([black, red]);
+        } else if (device_txt === 'EPD_3in7') {
+            const b64_buffers = extractHLSBFromCanvasGray4(canvas);
+            sequentialPost(b64_buffers);
+        }
     }
 
     //on paste INTO the canvas
@@ -468,7 +538,7 @@ main = function(device_txt) {
     const transferDraggableToMain = () => {
         if (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT) {
             mainContext.drawImage(draggableCanvas, draggableCanvas.offsetLeft - mainCanvas.offsetLeft, draggableCanvas.offsetTop - mainCanvas.offsetTop);
-            performDither(mainCanvas, mainContext);
+            performDither(mainCanvas, mainContext, (appMode !== APP_MODES.TEXT));
             setAppMode(APP_MODES.DEFAULT);
         }
     }

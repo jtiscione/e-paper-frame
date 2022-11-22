@@ -1,1 +1,1 @@
-128x296 white/black/red
+EPD_2in9_B
