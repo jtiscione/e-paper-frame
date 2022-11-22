@@ -35,8 +35,8 @@ main = function(device_txt) {
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],
-        lightgrey: [0xaa, 0xaa, 0xaa],
-        darkgrey: [0x55, 0x55, 0x55],
+        lightgrey: [0xd4, 0xd4, 0xd4],
+        darkgrey: [0xaa, 0xaa, 0xaa],
         black: [0x00, 0x00, 0x00],
         red: [0xff, 0x00, 0x00],
         orange: [0xf1, 0x65, 0x29],
@@ -387,10 +387,10 @@ main = function(device_txt) {
                 const blue = byteBuffer[buffer_index++];
                 const alpha = byteBuffer[buffer_index++];
                 const color = findClosestPaletteColor(red, green, blue, alpha);
-                if (color === 'white' || color === 'lightgrey') {
+                if (color === 'white' || color === 'darkgrey') {
                     first_HLSB[hlsb_index] |= (1 << bitshift);
                 }
-                if (color === 'white' || color === 'darkgrey') {
+                if (color === 'white' || color === 'lightgrey') {
                     second_HLSB[hlsb_index] |= (1 << bitshift);
                 }
                 if (bitshift === 0) {
@@ -399,10 +399,6 @@ main = function(device_txt) {
                 }
                 bitshift--;
             }
-        }
-        for (let index = 0; index < first_HLSB.length; index++) {
-            first_HLSB[index] = ~first_HLSB[index];
-            second_HLSB[index] = ~second_HLSB[index];
         }
         return [
             btoa(String.fromCharCode.apply(null, first_HLSB)),
@@ -429,7 +425,7 @@ main = function(device_txt) {
             const [black, red] = extractHLSBFromCanvasBlackRed(document.getElementById('main-canvas'));
             sequentialPost([black, red]);
         } else if (device_txt === 'EPD_3in7') {
-            const b64_buffers = extractHLSBFromCanvasGray4(canvas);
+            const b64_buffers = extractHLSBFromCanvasGray4(document.getElementById('main-canvas'));
             sequentialPost(b64_buffers);
         }
     }

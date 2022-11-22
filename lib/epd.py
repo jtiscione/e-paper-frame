@@ -22,7 +22,7 @@ class EPD:
 
         self.data_block_count = 0
 
-        self.init()
+        # self.init()
 
     def digital_write(self, pin, value):
         pin.value(value)
@@ -243,8 +243,8 @@ class EPD_3in7(EPD):
 
         # self.buffer_4Gray = bytearray(self.height * self.width // 4)
         # self.image4Gray = framebuf.FrameBuffer(self.buffer_4Gray, self.width, self.height, framebuf.GS2_HMSB)
-        self.clear()
-        utime.sleep_ms(500)
+        # self.clear()
+        # utime.sleep_ms(500)
 
     def ReadBusy(self):
         print("e-Paper busy")

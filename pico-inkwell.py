@@ -8,7 +8,7 @@ import time
 import rp2
 import gc
 import binascii
-from epd import EPD_2in9_B
+from epd import EPD_2in9_B, EPD_3in7
 
 def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
     startIndex = params.find(paramName+'=')
@@ -23,6 +23,11 @@ def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
     return val
 
 rp2.country("US")
+
+with open('./device.txt', 'r') as device_txt:
+    device = device_txt.read()
+
+print('device', device)
 
 mem_info()
 
@@ -43,13 +48,18 @@ print(wlan.ifconfig())
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
 s = socket.socket()
+s.settimeout(1) # 1 second
 s.bind(addr)
 s.listen(1)
 
 print(f'Listening on {addr}')
 mem_info()
 
-epd = EPD_2in9_B()
+epd = None;
+if device == 'EPD_2in9_B':
+    epd = EPD_2in9_B()
+if device == 'EPD_3in7':
+    epd = EPD_3in7()
 
 while True:
     try:
@@ -66,23 +76,34 @@ while True:
                     # found frame start
                     start = i + 4
 
-                    buffer = bytearray(2048)
+                    buffer = bytearray(800)
                     buffer_index = 0
                     chunk_length = 0
                     prev_chunk_length = 0
 
                     while True:
                         prev_chunk_length = chunk_length
-                        chunk = cl.recv(2048)
+                        print("Receiving chunk...")
+                        try:
+                            chunk = cl.recv(800)
+                        except:
+                            print('except')
+                            break
+                        print("Received.")
                         chunk_length = len(chunk)
                         buffer[buffer_index: buffer_index + chunk_length] = chunk
                         buffer_index += chunk_length
+                        print("buffer_index", buffer_index);
                         if prev_chunk_length > chunk_length:
                             break
+                    print("Done loop...")
                     gc.collect()
+                    print("Decoding buffer")
                     params = buffer.decode('ascii')
                     buffer = None
+                    print("Decoded.")
                     gc.collect()
+                    print(params)
 
                     data = bytearray(binascii.a2b_base64(params))
                     params = None
@@ -161,4 +182,5 @@ while True:
 
         
     except OSError as e:
-        print(e)
+        if e.errno != 110:
+            print(e)
