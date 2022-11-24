@@ -8,7 +8,7 @@ import time
 import rp2
 import gc
 import binascii
-from epd import EPD_2in9_B, EPD_3in7
+from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
 def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
     startIndex = params.find(paramName+'=')
@@ -60,6 +60,8 @@ if device == 'EPD_2in9_B':
     epd = EPD_2in9_B()
 if device == 'EPD_3in7':
     epd = EPD_3in7()
+if device == 'EPD_5in65':
+    epd = EPD_5in65()
 
 while True:
     try:
@@ -71,68 +73,75 @@ while True:
         
         if len(request) > 0 and request[0] == 80: #'P' for post
             print('POST')
+            print(request)
+            print('length', len(request))
+            block_number = request[11] - 48
+            print('block number', str(block_number))
+            if (block_number < 0 or block_number > 9):
+                cl.send("HTTP/1.0 404 Bad block_number " + block_number)
+                cl.close()
+                break
+            
+            start = 0
             for i in range(len(request) - 3):
                 if(request[i] == 13 and request[i + 1] == 10 and request[i + 2] == 13 and request[i + 3] == 10):
                     # found frame start
                     start = i + 4
-
-                    buffer = bytearray(800)
-                    buffer_index = 0
-                    chunk_length = 0
-                    prev_chunk_length = 0
-
-                    while True:
-                        prev_chunk_length = chunk_length
-                        print("Receiving chunk...")
-                        try:
-                            chunk = cl.recv(800)
-                        except:
-                            print('except')
-                            break
-                        print("Received.")
-                        chunk_length = len(chunk)
-                        buffer[buffer_index: buffer_index + chunk_length] = chunk
-                        buffer_index += chunk_length
-                        print("buffer_index", buffer_index);
-                        if prev_chunk_length > chunk_length:
-                            break
-                    print("Done loop...")
-                    gc.collect()
-                    print("Decoding buffer")
-                    params = buffer.decode('ascii')
-                    buffer = None
-                    print("Decoded.")
-                    gc.collect()
-                    print(params)
-
-                    data = bytearray(binascii.a2b_base64(params))
-                    params = None
-                    gc.collect()
-                    epd.process_data_block(data)
-                    cl.send('HTTP/1.0 200 OK\r\n')
-                    cl.close()
-                    mem_info()
                     break
+            if (i == 0):
+                cl.send("HTTP/1.0 400 Bad Request (no start found)")
+                cl.close()
+                break
 
-                    # black = extract_urlencoded_param(params, 'black', True, False)
-                    # red = extract_urlencoded_param(params, 'red', True, False)
-                    # params = None
-                    # gc.collect()
-                    # cl.send('HTTP 1.0 200 OK\r\n')
-                    # cl.close()
-                    # mem_info()
+            print('start', start)
 
-                    # epd = EPD_2in9_B()
-                    # epd.set_buffers(black, red)
-                    # epd.buffer_black = black
-                    # epd.buffer_red = red
-                    # epd.display()
-                    # epd.delay_ms(2000)
-                    # print("sleep")
-                    # epd.sleep()
-                    # gc.collect()
-                    # mem_info()
-                    # break
+            buffer = bytearray(800)
+            buffer_index = 0
+            chunk_length = 0
+            prev_chunk_length = 0
+
+            while True:
+                prev_chunk_length = chunk_length
+                print("Receiving chunk...")
+                try:
+                    chunk = cl.recv(800)
+                except:
+                    print('except')
+                    break
+                print("Received.")
+                chunk_length = len(chunk)
+                buffer[buffer_index: buffer_index + chunk_length] = chunk
+                buffer_index += chunk_length
+                print("buffer_index", buffer_index);
+                if prev_chunk_length > chunk_length:
+                    break
+            print("Done loop...")
+            gc.collect()
+            print("Buffer length", len(buffer))
+            print("Decoding buffer")
+            try:
+                params = buffer.decode('ascii')
+            except:
+                cl.send("HTTP/1.0 500 Server error")
+                cl.close()
+                break
+            buffer = None
+            print("Decoded.")
+            gc.collect()
+            print(params)
+            print(len(params))
+
+            data = bytearray(binascii.a2b_base64(params))
+            params = None
+            print(len(data))
+            gc.collect()
+            if (len(data) > 0):
+                epd.process_data_block(data)
+                cl.send('HTTP/1.0 200 OK\r\n')
+            else:
+                cl.send("HTTP/1.0 400 Bad Request\r\n")
+            cl.close()
+            mem_info()
                             
         if len(request) > 0 and request[0] == 71: # 'G' for GET
             requestStr = request.decode('utf-8')

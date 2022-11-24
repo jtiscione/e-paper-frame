@@ -489,7 +489,7 @@ class EPD_3in7(EPD):
 
 
     def process_data_block(self, data):
-        if (self.data_block_count == 0):
+        if self.data_block_count == 0:
             self.init()
             # first buffer
             self.send_command(0x49)
@@ -510,7 +510,7 @@ class EPD_3in7(EPD):
                     self.send_data(data[i + j * int(self.width // 8)])
 
             self.data_block_count = 1
-        elif (self.data_block_count == 1):
+        elif self.data_block_count == 1:
             # second buffer
             self.send_command(0x4E)
             self.send_data(0x00)
@@ -537,6 +537,150 @@ class EPD_3in7(EPD):
             self.ReadBusy()
 
             # self.TurnOnDisplay()
+            self.data_block_count = 0
+            self.delay_ms(2000)
+            self.sleep()
+
+class EPD_5in65(EPD):
+
+    def __init__(self):
+        super().__init__(600, 448)
+        self.Black = 0x00
+        self.White = 0x01
+        self.Green = 0x02
+        self.Blue = 0x03
+        self.Red = 0x04
+        self.Yellow = 0x05
+        self.Orange = 0x06
+        self.Clean = 0x07
+
+    def BusyHigh(self):
+        while(self.digital_read(self.busy_pin) == 0):
+            self.delay_ms(1)
+
+    def BusyLow(self):
+        while(self.digital_read(self.busy_pin) == 1):
+            self.delay_ms(1)
+
+    def init(self):
+        self.reset()
+        self.BusyHigh()
+        self.send_command(0x00)
+        self.send_data(0xEF)
+        self.send_data(0x08)
+        self.send_command(0x01)
+        self.send_data(0x37)
+        self.send_data(0x00)
+        self.send_data(0x23)
+        self.send_data(0x23)
+        self.send_command(0x03)
+        self.send_data(0x00)
+        self.send_command(0x06)
+        self.send_data(0xC7)
+        self.send_data(0xC7)
+        self.send_data(0x1D)
+        self.send_command(0x30)
+        self.send_data(0x3C)
+        self.send_command(0x41)
+        self.send_data(0x00)
+        self.send_command(0x50)
+        self.send_data(0x37)
+        self.send_command(0x60)
+        self.send_data(0x22)
+        self.send_command(0x61)
+        self.send_data(0x02)
+        self.send_data(0x58)
+        self.send_data(0x01)
+        self.send_data(0xC0)
+        self.send_command(0xE3)
+        self.send_data(0xAA)
+
+        self.delay_ms(100)
+        self.send_command(0x50)
+        self.send_data(0x37)
+
+    def clear(self):
+        self.fill(self.Clean)
+    
+    def fill(self, color):
+
+        self.send_command(0x61)   # Set Resolution setting
+        self.send_data(0x02)
+        self.send_data(0x58)
+        self.send_data(0x01)
+        self.send_data(0xC0)
+        self.send_command(0x10)
+        for i in range(0,int(self.width / 2)):
+            for j in range(0, self.height):
+                self.send_data((color<<4)|color)
+
+        self.send_command(0x04)   # 0x04
+        self.BusyHigh()
+        self.send_command(0x12)   # 0x12
+        self.BusyHigh()
+        self.send_command(0x02)   # 0x02
+        self.BusyLow()
+        self.delay_ms(500)
+
+    def display(self, image):
+
+        self.send_command(0x61)   # Set Resolution setting
+        self.send_data(0x02)
+        self.send_data(0x58)
+        self.send_data(0x01)
+        self.send_data(0xC0)
+        self.send_command(0x10)
+        for i in range(0, self.height):
+            for j in range(0, int(self.width // 2)):
+                self.send_data(image[j+(int(self.width // 2)*i)])
+
+        self.send_command(0x04)   # 0x04
+        self.BusyHigh()
+        self.send_command(0x12)   # 0x12
+        self.BusyHigh()
+        self.send_command(0x02)   # 0x02
+        self.BusyLow()
+        self.delay_ms(200)
+
+    def sleep(self):
+        self.delay_ms(100)
+        self.send_command(0x07)
+        self.send_data(0xA5)
+        self.delay_ms(100)
+        self.digital_write(self.reset_pin, 1)
+
+    # Will receive 8 POST blocks of 16800 bytes each.
+    # Each block is a horizontal stripe of data: 56 rows of 600 pixels
+    # with each pixel occupying half a byte.
+    def process_data_block(self, data):
+        print('process_data_block() data length', len(data))
+        if (self.data_block_count == 0):
+            self.init()
+
+            self.send_command(0x61)   # Set Resolution setting
+            self.send_data(0x02)
+            self.send_data(0x58)
+            self.send_data(0x01)
+            self.send_data(0xC0)
+            self.send_command(0x10)
+
+        index = 0
+        for i in range(0, self.height / 8):
+            for j in range(0, int(self.width // 2)):
+                self.send_data(data[index]) # j+(int(self.width // 2)*i)
+                index += 1
+
+        self.data_block_count += 1
+
+        if self.data_block_count == 8:
+            self.send_command(0x04)   # 0x04
+            self.BusyHigh()
+            self.send_command(0x12)   # 0x12
+            self.BusyHigh()
+            self.send_command(0x02)   # 0x02
+            self.BusyLow()
+            self.delay_ms(200)
+
             self.data_block_count = 0
             self.delay_ms(2000)
             self.sleep()

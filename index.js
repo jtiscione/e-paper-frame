@@ -27,14 +27,15 @@ main = function(device_txt) {
         // buffer = bytearray(self.height * self.width // 2)
         // FrameBuffer(buffer, self.width, self.height, framebuf.GS4_HMSB)
         EPD_WIDTH = 600;
-        EPD_HEIGHT = 480;
-        AVAILABLE_COLORS = ['white', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
+        EPD_HEIGHT = 448;
+        AVAILABLE_COLORS = ['white', 'clean', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
     }
 
    document.getElementById('caption').innerHTML = device_txt;
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],
+        clean: [0xee, 0xee, 0xee],
         lightgrey: [0xd4, 0xd4, 0xd4],
         darkgrey: [0xaa, 0xaa, 0xaa],
         black: [0x00, 0x00, 0x00],
@@ -113,6 +114,9 @@ main = function(device_txt) {
     let scalingFactor = 1.0;
 
     let selectedColor = 'black';
+
+    const style = (color) => (color === 'clean' ? '#eeeeee' : color);
+
     let strokeWidth = parseInt(strokeWidthSlider.value);
 
     let fontName = 'Helvetica';
@@ -163,7 +167,7 @@ main = function(device_txt) {
             mouseDownX = e.offsetX;
             mouseDownY = e.offsetY;
             if (appMode === APP_MODES.DRAWING) {
-                mainContext.fillStyle = selectedColor;
+                mainContext.fillStyle = style(selectedColor);
                 mainContext.beginPath();
                 mainContext.arc(mouseDownX, mouseDownY, strokeWidth / 2, 0, 2 * Math.PI);
                 mainContext.closePath();
@@ -179,7 +183,7 @@ main = function(device_txt) {
     mainCanvas.addEventListener('mousemove', (e) => {
         if (appMode === APP_MODES.DRAWING) {
             if (mouseDownX && mouseDownY) {
-                mainContext.strokeStyle = selectedColor;
+                mainContext.strokeStyle = style(selectedColor);
                 mainContext.lineWidth = strokeWidth;
                 mainContext.beginPath();
                 mainContext.moveTo(mouseDownX, mouseDownY);
@@ -193,11 +197,11 @@ main = function(device_txt) {
             if (mouseDownX && mouseDownY) {
                 workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
                 if (appMode === APP_MODES.DRAW_BOX) {
-                    workContext.strokeStyle = selectedColor;
+                    workContext.strokeStyle = style(selectedColor);
                     workContext.lineWidth = strokeWidth;
                     workContext.strokeRect(mouseDownX, mouseDownY, e.offsetX - mouseDownX, e.offsetY - mouseDownY);
                 } else {
-                    workContext.fillStyle = selectedColor;
+                    workContext.fillStyle = style(selectedColor);
                     workContext.fillRect(mouseDownX, mouseDownY, e.offsetX - mouseDownX, e.offsetY - mouseDownY);
                 }
             }
@@ -313,6 +317,7 @@ main = function(device_txt) {
         context.putImageData(imgData, 0, 0);
     }
 
+    // white / black / red
     function extractHLSBFromCanvasBlackRed(canvas, include_red=true) {
         const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
         const buffer = imageData.data.buffer;  // ArrayBuffer
@@ -368,6 +373,7 @@ main = function(device_txt) {
         ];
     }
 
+    // Grayscale 4 color
     function extractHLSBFromCanvasGray4(canvas) {
         const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
         const buffer = imageData.data.buffer;  // ArrayBuffer
@@ -406,26 +412,109 @@ main = function(device_txt) {
         ];
     }
 
+    // 7 color
+    function extractHMSBFromCanvas(canvas) {
+        const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
+        const buffer = imageData.data.buffer;  // ArrayBuffer
+        const byteBuffer = new Uint8ClampedArray(buffer);
+
+        const NUM_BLOCKS = 8;
+        const bands = [];
+
+        for (let i = 0; i < NUM_BLOCKS; i++) {
+            bands.push(new Uint8Array(canvas.width * canvas.height / (2 * NUM_BLOCKS)));
+        }
+
+        const toColorCode = (color) => {
+            if (color === 'black') {
+                return 0x00;
+            }
+            if (color === 'white') {
+                return 0x01;
+            }
+            if (color === 'green') {
+                return 0x02;
+            }
+            if (color === 'blue') {
+                return 0x03;
+            }
+            if (color === 'red') {
+                return 0x04;
+            }
+            if (color === 'yellow') {
+                return 0x05;
+            }
+            if (color === 'orange') {
+                return 0x06;
+            }
+            return 0x07; // the "clean" color
+        }
+
+        let buffer_index = 0;
+
+        const band_height = (canvas.height / NUM_BLOCKS);
+        for (let y = 0; y < canvas.height; y++) {
+            const band_number = Math.floor(y / band_height);
+            const band = bands[band_number];
+            let band_index = (canvas.width / 2) * (y - (band_height * band_number));
+            for (let x = 0; x < canvas.width; x += 2) {
+                const red1 = byteBuffer[buffer_index++]
+                const green1 = byteBuffer[buffer_index++]
+                const blue1 = byteBuffer[buffer_index++];
+                const alpha1 = byteBuffer[buffer_index++];
+                const color1 = toColorCode(findClosestPaletteColor(red1, green1, blue1, alpha1));
+                const red2 = byteBuffer[buffer_index++]
+                const green2 = byteBuffer[buffer_index++]
+                const blue2 = byteBuffer[buffer_index++];
+                const alpha2 = byteBuffer[buffer_index++];
+                const color2 = toColorCode(findClosestPaletteColor(red2, green2, blue2, alpha2));
+                band[band_index++] = (color1 << 4) | color2;
+            }
+        }
+
+        const b64_buffers = bands.map((band) => btoa(String.fromCharCode.apply(null, band)));
+        // console.log(b64_buffers);
+        return b64_buffers;
+    }
+
     // const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
     async function sequentialPost(buffers) {
-        for (let i=0; i < buffers.length; i++) {
-           const response = await fetch('/', {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/x-www-form-urlencoded',
-               },
-               body: buffers[i],
-           });
-           console.log(response.statusText);
+        let block = 0;
+        let sequence_retries = 0;
+        let block_retries = 0;
+        while (block < buffers.length && sequence_retries < 3) {
+            const response = await fetch(`/block${block}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: buffers[block],
+            });
+            console.log(`${response.status} ${response.statusText}`);
+            if (response.status >= 200 && response.status < 300) {
+                block_retries = 0;
+                block++;
+            } else {
+                block_retries += 1;
+                if (block_retries > 3) {
+                    block_retries = 0;
+                    sequence_retries++;
+                    block = 0;
+                }
+                await new Promise((resolve) => setTimeout(resolve,1000));
+            }
         }
     }
 
     async function uploadCanvas() {
         if (device_txt === 'EPD_2in9_B') {
-            const [black, red] = extractHLSBFromCanvasBlackRed(document.getElementById('main-canvas'));
+            const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas);
             sequentialPost([black, red]);
         } else if (device_txt === 'EPD_3in7') {
-            const b64_buffers = extractHLSBFromCanvasGray4(document.getElementById('main-canvas'));
+            const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas);
+            sequentialPost(b64_buffers);
+        } else if (device_txt === 'EPD_5in65') {
+            const b64_buffers = extractHMSBFromCanvas(mainCanvas);
             sequentialPost(b64_buffers);
         }
     }
@@ -578,7 +667,7 @@ main = function(device_txt) {
 
     clearButton.addEventListener('click', (e) => {
         workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
-        mainContext.fillStyle = 'white';
+        mainContext.fillStyle = style(selectedColor);
         mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
         setAppMode(APP_MODES.DEFAULT);
     });
@@ -608,7 +697,7 @@ main = function(device_txt) {
         }
 
         draggableContext.font = `${fontSize} ${fontName}`; // have to do this again after setting size
-        draggableContext.fillStyle = selectedColor;
+        draggableContext.fillStyle = style(selectedColor);
         draggableContext.clearRect(0, 0, draggableCanvas.width, draggableCanvas.height);
 
         if (SIDEWAYS) {
