@@ -72,7 +72,7 @@ class EPD:
     def sleep(self):
         pass
 
-    def process_data_block(self, data):
+    def process_data_block(self, data, block_number, send_response):
         pass
 
 
@@ -147,21 +147,27 @@ class EPD_2in9_B(EPD):
         self.delay_ms(2000)
         self.module_exit()
 
-    def process_data_block(self, data):
-        if (self.data_block_count == 0):
+    def process_data_block(self, data, block_number, send_response):
+        if (block_number == 0):
             self.init()
             # black buffer
             self.send_command(0x10)
             for j in range(0, self.height):
                 for i in range(0, int(self.width // 8)):
                     self.send_data(data[i + j * int(self.width // 8)])
+            send_response(200, 'OK')
             self.data_block_count = 1
-        elif (self.data_block_count == 1):
+        elif (block_number != self.data_block_count):
+            send_response(409, 'Conflict - expected block number ' + str(self.data_block_count))
+            self.data_block_count = 0
+            return
+        elif (block_number == 1):
             # red buffer
             self.send_command(0x13)
             for j in range(0, self.height):
                 for i in range(0, int(self.width // 8)):
                     self.send_data(data[i + j * int(self.width // 8)])
+            send_response(200, 'OK')
 
             self.TurnOnDisplay()
             self.data_block_count = 0
@@ -488,8 +494,8 @@ class EPD_3in7(EPD):
         self.send_data(0xA5)
 
 
-    def process_data_block(self, data):
-        if self.data_block_count == 0:
+    def process_data_block(self, data, block_number, send_response):
+        if block_number == 0:
             self.init()
             # first buffer
             self.send_command(0x49)
@@ -508,9 +514,15 @@ class EPD_3in7(EPD):
             for j in range(0, self.height):
                 for i in range(0, int(self.width // 8)):
                     self.send_data(data[i + j * int(self.width // 8)])
+            send_response(200, 'OK')
 
             self.data_block_count = 1
-        elif self.data_block_count == 1:
+        elif block_number == 1:
+            if (block_number != self.data_block_count):
+                send_response(409, 'Conflict - expected block number ' + str(self.data_block_count))
+                self.data_block_count = 0
+                return
+
             # second buffer
             self.send_command(0x4E)
             self.send_data(0x00)
@@ -526,6 +538,7 @@ class EPD_3in7(EPD):
                 for i in range(0, int(self.width // 8)):
                     self.send_data(data[i + j * int(self.width // 8)])
 
+            send_response(200, 'OK')
             
             self.Load_LUT(0)
 
@@ -652,9 +665,9 @@ class EPD_5in65(EPD):
     # Will receive 8 POST blocks of 16800 bytes each.
     # Each block is a horizontal stripe of data: 56 rows of 600 pixels
     # with each pixel occupying half a byte.
-    def process_data_block(self, data):
+    def process_data_block(self, data, block_number, send_response):
         print('process_data_block() data length', len(data))
-        if (self.data_block_count == 0):
+        if (block_number == 0):
             self.init()
 
             self.send_command(0x61)   # Set Resolution setting
@@ -663,6 +676,11 @@ class EPD_5in65(EPD):
             self.send_data(0x01)
             self.send_data(0xC0)
             self.send_command(0x10)
+        else:
+            if (block_number != self.data_block_count):
+                send_response(409, 'Conflict - expected block number ' + str(self.data_block_count))
+                self.data_block_count = 0
+                return
 
         index = 0
         for i in range(0, self.height / 8):
@@ -670,9 +688,11 @@ class EPD_5in65(EPD):
                 self.send_data(data[index]) # j+(int(self.width // 2)*i)
                 index += 1
 
+        send_response(200, 'OK')
+
         self.data_block_count += 1
 
-        if self.data_block_count == 8:
+        if block_number == 7:
             self.send_command(0x04)   # 0x04
             self.BusyHigh()
             self.send_command(0x12)   # 0x12

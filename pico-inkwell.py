@@ -89,7 +89,7 @@ while True:
                     start = i + 4
                     break
             if (i == 0):
-                cl.send("HTTP/1.0 400 Bad Request (no start found)")
+                cl.send("HTTP/1.0 400 Bad Request (no start found)\r\n")
                 cl.close()
                 break
 
@@ -122,7 +122,7 @@ while True:
             try:
                 params = buffer.decode('ascii')
             except:
-                cl.send("HTTP/1.0 500 Server error")
+                cl.send("HTTP/1.0 500 Server error\r\n")
                 cl.close()
                 break
             buffer = None
@@ -130,17 +130,28 @@ while True:
             gc.collect()
             print(params)
             print(len(params))
-
-            data = bytearray(binascii.a2b_base64(params))
+            try:
+                data = bytearray(binascii.a2b_base64(params))
+            except:
+                cl.send("HTTP/1.0 500 Incorrect padding\r\n")
+                cl.close()
+                break
             params = None
             print(len(data))
             gc.collect()
-            if (len(data) > 0):
-                epd.process_data_block(data)
-                cl.send('HTTP/1.0 200 OK\r\n')
-            else:
+            
+            if (len(data) == 0):
                 cl.send("HTTP/1.0 400 Bad Request\r\n")
-            cl.close()
+                cl.close()
+                break
+            
+            def send_response(status_code, status_text):
+                cl.send(f'HTTP/1.0 {status_code} {status_text}\r\n')
+                cl.close()
+            try:
+                epd.process_data_block(data, block_number, send_response)
+            except:
+                send_response(500, 'Server error\r\n')
             mem_info()
                             
         if len(request) > 0 and request[0] == 71: # 'G' for GET

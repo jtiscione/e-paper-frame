@@ -480,8 +480,8 @@ main = function(device_txt) {
     // const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
     async function sequentialPost(buffers) {
         let block = 0;
-        let sequence_retries = 0;
-        let block_retries = 0;
+        let sequence_retries = 0; // max 3
+        let block_retries = 0; // max 2
         while (block < buffers.length && sequence_retries < 3) {
             const response = await fetch(`/block${block}`, {
                 method: 'POST',
@@ -494,9 +494,13 @@ main = function(device_txt) {
             if (response.status >= 200 && response.status < 300) {
                 block_retries = 0;
                 block++;
+            } else if (response.status === 409) {
+                block_retries = 0;
+                sequence_retries++;
+                block = 0;
             } else {
                 block_retries += 1;
-                if (block_retries > 3) {
+                if (block_retries > 2) {
                     block_retries = 0;
                     sequence_retries++;
                     block = 0;
