@@ -63,6 +63,8 @@ if device == 'EPD_3in7':
 if device == 'EPD_5in65':
     epd = EPD_5in65()
 
+incoming_buffer = bytearray(24576)
+
 while True:
     try:
         cl, addr = s.accept()
@@ -80,7 +82,7 @@ while True:
             if (block_number < 0 or block_number > 9):
                 cl.send("HTTP/1.0 404 Bad block_number " + block_number)
                 cl.close()
-                break
+                continue
             
             start = 0
             for i in range(len(request) - 3):
@@ -91,11 +93,11 @@ while True:
             if (i == 0):
                 cl.send("HTTP/1.0 400 Bad Request (no start found)\r\n")
                 cl.close()
-                break
+                continue
 
             print('start', start)
 
-            buffer = bytearray(800)
+            buffer = memoryview(incoming_buffer)
             buffer_index = 0
             chunk_length = 0
             prev_chunk_length = 0
@@ -104,46 +106,45 @@ while True:
                 prev_chunk_length = chunk_length
                 print("Receiving chunk...")
                 try:
-                    chunk = cl.recv(800)
+                    chunk_length = cl.readinto(buffer[buffer_index: buffer_index + 800], 800)
                 except:
                     print('except')
                     break
                 print("Received.")
-                chunk_length = len(chunk)
-                buffer[buffer_index: buffer_index + chunk_length] = chunk
                 buffer_index += chunk_length
                 print("buffer_index", buffer_index);
                 if prev_chunk_length > chunk_length:
                     break
             print("Done loop...")
             gc.collect()
-            print("Buffer length", len(buffer))
+            print("Buffer length", len(buffer[0: buffer_index]))
             print("Decoding buffer")
             try:
-                params = buffer.decode('ascii')
+                params = bytes(buffer[0: buffer_index]).decode('ascii')
             except:
                 cl.send("HTTP/1.0 500 Server error\r\n")
                 cl.close()
-                break
-            buffer = None
+                continue
+            # buffer = None
             print("Decoded.")
             gc.collect()
             print(params)
             print(len(params))
             try:
-                data = bytearray(binascii.a2b_base64(params))
+                data = bytes(binascii.a2b_base64(params))
             except:
                 cl.send("HTTP/1.0 500 Incorrect padding\r\n")
                 cl.close()
-                break
+                continue
             params = None
             print(len(data))
+            data = None
             gc.collect()
             
             if (len(data) == 0):
                 cl.send("HTTP/1.0 400 Bad Request\r\n")
                 cl.close()
-                break
+                continue
             
             def send_response(status_code, status_text):
                 cl.send(f'HTTP/1.0 {status_code} {status_text}\r\n')
