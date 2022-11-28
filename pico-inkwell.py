@@ -43,7 +43,7 @@ while not wlan.isconnected() and wlan.status() >= 0:
     led.off()
     time.sleep(0.5)
 led.off()
-print(wlan.ifconfig())
+ifconfig = wlan.ifconfig()
 
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
@@ -52,10 +52,10 @@ s.settimeout(1) # 1 second
 s.bind(addr)
 s.listen(1)
 
-print(f'Listening on {addr}')
+print(f'Listening on {ifconfig[0]}')
 mem_info()
 
-epd = None;
+epd = None
 if device == 'EPD_2in9_B':
     epd = EPD_2in9_B()
 if device == 'EPD_3in7':
@@ -70,8 +70,6 @@ while True:
         cl, addr = s.accept()
         print('Client connected from', addr)
         request = cl.recv(2048)
-        # print(request)
-        # print('length', len(request))
         
         if len(request) > 0 and request[0] == 80: #'P' for post
             print('POST')
@@ -95,8 +93,6 @@ while True:
                 cl.close()
                 continue
 
-            print('start', start)
-
             buffer = memoryview(incoming_buffer)
             buffer_index = 0
             chunk_length = 0
@@ -112,7 +108,6 @@ while True:
                     break
                 print("Received.")
                 buffer_index += chunk_length
-                print("buffer_index", buffer_index);
                 if prev_chunk_length > chunk_length:
                     break
             print("Done loop...")
@@ -125,11 +120,7 @@ while True:
                 cl.send("HTTP/1.0 500 Server error\r\n")
                 cl.close()
                 continue
-            # buffer = None
-            print("Decoded.")
-            gc.collect()
-            print(params)
-            print(len(params))
+
             try:
                 data = bytes(binascii.a2b_base64(params))
             except:
@@ -137,8 +128,7 @@ while True:
                 cl.close()
                 continue
             params = None
-            print(len(data))
-            data = None
+            print('Deta length', len(data))
             gc.collect()
             
             if (len(data) == 0):
@@ -153,6 +143,8 @@ while True:
                 epd.process_data_block(data, block_number, send_response)
             except:
                 send_response(500, 'Server error\r\n')
+            data = None
+            gc.collect()
             mem_info()
                             
         if len(request) > 0 and request[0] == 71: # 'G' for GET

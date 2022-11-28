@@ -662,8 +662,8 @@ class EPD_5in65(EPD):
         self.delay_ms(100)
         self.digital_write(self.reset_pin, 1)
 
-    # Will receive 8 POST blocks of 16800 bytes each.
-    # Each block is a horizontal stripe of data: 56 rows of 600 pixels
+    # Will receive 8 POST blocks of 22400 base64 characters encoding 16800 bytes each.
+    # Each block is a horizontal stripe of data: 56 rows of 448 pixels
     # with each pixel occupying half a byte.
     def process_data_block(self, data, block_number, send_response):
         print('process_data_block() data length', len(data))
