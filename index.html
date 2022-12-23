@@ -2,13 +2,13 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>E-Ink Paint</title>
+        <title>E-Paper Frame</title>
         <script src="index.js"></script>
         <link rel="stylesheet" type="text/css" href="index.css">
         <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVR4nO2Zv2sUQRTHP0YRG3MxEgQDFjFJq5DGxkaIMYmCleI/4L8gFqIoVoJYaKmdKIo/CksVC7XRf0Cx8tJ4iUiiBC9C1mLecpdkczfevtkZJ/OBx93NvHvz3nd3Z2dnIZFIJMqTifn63TN9GkH+Z5IAvhPwzTalOCrXYw+Uzn/LnwFJAN8JJBJ+0boLbIbW3cFZni7ngO2BxlqDSwEOKMYaVoy1BpcCnA40ViUMA/O0ntrK2jdgf6UVlOAw8Bm94nP7BBzSTrbs7DoAjIqNA0eBY7i7tFaB18BbjMhfxH44Gm8DI8AN4B3QQP8o92rzwHvJbcRV8eeA5QCK7WbLwFnt4ieAlQCKs7UmZi5S40kARf2rPbIpzHYS/A4MWvqGwgIw1M3JVoCsXC5eyLC4G8W8H+D6QS8RBTHPAWBRX8xzgBU+BVgEjogteszDCu1Fyh9gsi3+cWnTHidYAS5I3H1iABe3igAvMJPTDuAN5slyp7Q9j12Ar7SW1Lfa2m9K216gHrMAJyTeJGZzI29fBaalbyZWAR5IrEFgrqB/DtgjPo9jE6BJa6fmTge/2+IzKv+JRoD7EmeczhsrK8CY+D6MSYApiXPPwveu+E7HJEC+MWHzrqAhvkNVCFDVUvi3fO7apL+OWQcMtPk0XScF1QlwUD4/FvTVgfPyfQr4IN/HCny9UfZUvCRxThX05eSLoFn5fUVhXDXKJtIA+iXW9XV9/cAZKf6a+NTQebcYjAAZZms9v+ROYl5x/RR7RevI9wHPlMYMSoBchFqHcWrAU8Xx1NBKKMOc2pcxb5t2i01I24LyWF1Je4JVZJFIhEuaAywD/SqZiA+sttptBShaw4eOas5Fa/jQbUZTANi4hg/ZrmoXnzOLWbcvBVDkelsCXuLgyCcSiXj5C0PU4TA+Xv48AAAAAElFTkSuQmCC" />
     </head>
     <body>
-        <h1>Pico Inkwell</h1>
+        <h1>E-Paper Frame</h1>
         <div>Use the clipboard to import image data:</div>
         <div>On Windows: press Shift+Windows+S, draw a box on screen, and paste into canvas using Ctrl-V.</div>
         <div>On Mac: press Cmd+Ctrl+Shift+4, draw a box on screen, and paste into canvas using Cmd-V.</div>
@@ -22,26 +22,8 @@
             </div>
             <div class="std-flex-padding"></div>
         </div>
-        <div class="std-flex-container controls">
+        <div class="std-flex-container">
             <div class="std-flex-padding"></div>
-            <div class="paste-section">
-                <div>CLIPBOARD</div>
-                <label for="scale">SCALE</label>
-                <input
-                        type="range"
-                        min="1"
-                        max="200"
-                        value="100"
-                        class="slider"
-                        id="scale"
-                        step="any"
-                        disabled
-                >
-                <div>
-                    <button id="apply-paste" accesskey="x" disabled>APPLY</button>
-                    <button id="cancel-paste" disabled>CANCEL</button>
-                </div>
-            </div>
             <div class="brush-style-section">
                 <div class="std-flex-container">
                     <div class="std-flex-padding"></div>
@@ -50,16 +32,16 @@
                 </div>
                 <div class="std-flex-container">
                     <div class="std-flex-padding"></div>
-                    <button id="white" class="palette-button" style="background-color:white"></button>
-                    <button id="clean" class="palette-button" style="background-color:#eeeeee"></button>
-                    <button id="lightgrey" class="palette-button" style="background-color:lightgrey"></button>
-                    <button id="darkgrey" class="palette-button" style="background-color:darkgrey"></button>
-                    <button id="black" class="palette-button palette-button-selected" style="background-color:black"></button>
-                    <button id="red" class="palette-button" style="background-color:red"></button>
-                    <button id="orange" class="palette-button" style="background-color:orange"></button>
-                    <button id="yellow" class="palette-button" style="background-color:yellow"></button>
-                    <button id="green" class="palette-button" style="background-color:green"></button>
-                    <button id="blue" class="palette-button" style="background-color:blue"></button>
+                    <button title="white" id="white" class="palette-button" style="background-color:white"></button>
+                    <button title="clean" id="clean" class="palette-button" style="background-color:#eeeeee"></button>
+                    <button title="light gray" id="lightgrey" class="palette-button" style="background-color:lightgrey"></button>
+                    <button title="dark gray" id="darkgrey" class="palette-button" style="background-color:darkgrey"></button>
+                    <button title="black" id="black" class="palette-button palette-button-selected" style="background-color:black"></button>
+                    <button title="red" id="red" class="palette-button" style="background-color:red"></button>
+                    <button title="orange" id="orange" class="palette-button" style="background-color:orange"></button>
+                    <button title="yellow" id="yellow" class="palette-button" style="background-color:yellow"></button>
+                    <button title="green" id="green" class="palette-button" style="background-color:green"></button>
+                    <button title="blue" id="blue" class="palette-button" style="background-color:blue"></button>
                     <div class="std-flex-padding"></div>
                 </div>
                 <div class="std-flex-container">
@@ -83,10 +65,31 @@
                     <button class="toolbar-button" title="fill box" id="fill-box-button">&nbsp;</button>
                     <button class="toolbar-button" title="text" id="text-button">&nbsp;</button>
                     <button class="toolbar-button" title="clear" id="clear-button">&nbsp;</button>
-                    <button class="toolbar-button" title="send to e-ink device" id="post-button"></button>
                 </div>
                 <div>
                     <input id="sideways-checkbox" type="checkbox">SIDEWAYS POSITION</input>
+                </div>
+            </div>
+            <div class="std-flex-padding"></div>
+        </div>
+        <div class="std-flex-container">
+            <div class="std-flex-padding"></div>
+            <div class="paste-section">
+                <div>CLIPBOARD</div>
+                <label for="scale">SCALE</label>
+                <input
+                        type="range"
+                        min="1"
+                        max="200"
+                        value="100"
+                        class="slider"
+                        id="scale"
+                        step="any"
+                        disabled
+                >
+                <div>
+                    <button id="apply-paste" accesskey="x" disabled>APPLY</button>
+                    <button id="cancel-paste" disabled>CANCEL</button>
                 </div>
             </div>
             <div class="text-section">
@@ -136,6 +139,11 @@
                         <option value="40pt">40pt</option>
                     </select>
                 </div>
+            </div>
+            <div class="print-section">
+                <button id="print-button" title="send to e-ink device" class="print-button">
+                    UPLOAD
+                </button>
             </div>
             <div class="std-flex-padding"></div>
         </div>

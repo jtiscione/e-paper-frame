@@ -1,5 +1,5 @@
 main = function(device_txt) {
-    console.log('device_txt', device_txt); // Prints "128x296 white/black/red"
+    console.log('device_txt', device_txt);
 
     let EPD_WIDTH = 128;
     let EPD_HEIGHT = 296;
@@ -67,7 +67,7 @@ main = function(device_txt) {
     mainCanvas.width = EPD_WIDTH;
     mainCanvas.height = EPD_HEIGHT;
     const mainContext = mainCanvas.getContext('2d');
-    mainContext.fillStyle = 'white';
+    mainContext.fillStyle = AVAILABLE_COLORS.indexOf('clean') !== -1 ? '#eeeeee' : 'white';
     mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
     const draggableCanvas = document.getElementById('draggable-canvas');
@@ -94,10 +94,11 @@ main = function(device_txt) {
     const fillBoxButton = document.getElementById('fill-box-button');
     const textButton = document.getElementById('text-button');
     const clearButton = document.getElementById('clear-button');
-    const postButton = document.getElementById('post-button');
 
     const fontNameSelect = document.getElementById('font-name-select');
     const fontSizeSelect = document.getElementById('font-size-select');
+
+    const printButton = document.getElementById('print-button');
 
     const APP_MODES = {
         DEFAULT: 'DEFAULT',
@@ -106,6 +107,7 @@ main = function(device_txt) {
         DRAW_BOX: 'DRAW_BOX',
         FILL_BOX: 'FILL_BOX',
         TEXT: 'TEXT',
+        PRINT_OPERATION: 'PRINT_OPERATION',
     };
 
     let appMode = APP_MODES.DEFAULT;
@@ -224,12 +226,13 @@ main = function(device_txt) {
         scaleSlider.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
         applyPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
         cancelPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
-        // palette_buttons.forEach((button) => { button.disabled = (appMode === APP_MODES.PASTE_OPERATION);});
-        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING) {
+        printButton.disabled = (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT || appMode === APP_MODES.PRINT_OPERATION);
+        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING || appMode === APP_MODES.PRINT_OPERATION) {
             draggableCanvas.style.display = 'none';
         }
+
         sidewaysCheckbox.disabled = (appMode === APP_MODES.TEXT);
-        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION);
+        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.PRINT_OPERATION);
         if (appMode === APP_MODES.TEXT) {
             text = '';
             draggableCanvas.style.top = `${mainCanvas.offsetTop}px`;
@@ -238,7 +241,7 @@ main = function(device_txt) {
             draggableCanvas.height = 0; // for now
             draggableCanvas.style.display = 'block';
         }
-        mainCanvas.style.cursor = (appMode !== APP_MODES.TEXT ? 'crosshair' : 'text');
+        mainCanvas.style.cursor = (appMode === APP_MODES.TEXT ? 'text' : (appMode === APP_MODES.PRINT_OPERATION ? 'wait' : 'crosshair'));
 
         const c_names = (mode) => (appMode === mode ? 'toolbar-button toolbar-button-selected' : 'toolbar-button');
 
@@ -299,6 +302,8 @@ main = function(device_txt) {
                 const red = data[index];
                 const green = data[index + 1];
                 const blue = data[index + 2];
+                const alpha = data[index + 3];
+                console.log(`red ${red}  green ${green}  blue ${blue}  alpha ${alpha}`);
                 const [ new_red, new_green, new_blue] = PALETTE_COLORS[findClosestPaletteColor(red, green, blue)];
                 data[index] = new_red;
                 data[index + 1] = new_green;
@@ -676,7 +681,7 @@ main = function(device_txt) {
         setAppMode(APP_MODES.DEFAULT);
     });
 
-    postButton.addEventListener('click', (e) => {
+    printButton.addEventListener('click', (e) => {
         uploadCanvas();
     });
 
