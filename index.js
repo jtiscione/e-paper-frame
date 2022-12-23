@@ -46,6 +46,20 @@ main = function(device_txt) {
         blue: [0x00, 0x00, 0xff],
     };
 
+    // Slightly favors neutral colors (mostly for text)
+    const PALETTE_WEIGHTS = {
+        white: 1,
+        clean: 1,
+        lightgrey: 1,
+        darkgrey: 1,
+        black: 1,
+        red: 0.75,
+        orange: 0.75,
+        yellow: 0.75,
+        green: 0.75,
+        blue: 0.75,
+    };
+
     const sidewaysCheckbox = document.getElementById('sideways-checkbox');
     const pane = document.getElementById('pane');
     let SIDEWAYS = (EPD_HEIGHT > EPD_WIDTH);
@@ -67,11 +81,13 @@ main = function(device_txt) {
     mainCanvas.width = EPD_WIDTH;
     mainCanvas.height = EPD_HEIGHT;
     const mainContext = mainCanvas.getContext('2d');
+    mainContext.willReadFrequently = true;
     mainContext.fillStyle = AVAILABLE_COLORS.indexOf('clean') !== -1 ? '#eeeeee' : 'white';
     mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
     const draggableCanvas = document.getElementById('draggable-canvas');
     const draggableContext = draggableCanvas.getContext('2d');
+    draggableContext.willReadFrequently = true;
 
     const workCanvas = document.getElementById('work-canvas');
     workCanvas.style.display = 'block';
@@ -122,7 +138,7 @@ main = function(device_txt) {
     let strokeWidth = parseInt(strokeWidthSlider.value);
 
     let fontName = 'Helvetica';
-    let fontSize = '12pt';
+    let fontSize = '32pt';
     let text = '';
 
     // draggableCanvas is draggable if visible
@@ -260,7 +276,12 @@ main = function(device_txt) {
         let lowestDistance = 1000;
         AVAILABLE_COLORS.forEach((color) => {
             const [paletteRed, paletteGreen, paletteBlue] = PALETTE_COLORS[color];
-            const distance = Math.sqrt((r - paletteRed) * (r - paletteRed) + (g - paletteGreen) * (g - paletteGreen) + (b - paletteBlue) * (b - paletteBlue));
+            const weight = PALETTE_WEIGHTS[color];
+            const distance = Math.sqrt(
+                (r - paletteRed) * (r - paletteRed)
+                + (g - paletteGreen) * (g - paletteGreen)
+                + (b - paletteBlue) * (b - paletteBlue)
+            ) / weight;
             // faster: const distance = Math.abs(r - paletteRed) + Math.abs(g - paletteGreen) + Math.abs(b - paletteBlue);
             if (distance < lowestDistance) {
                 lowestColor = color;
@@ -302,8 +323,6 @@ main = function(device_txt) {
                 const red = data[index];
                 const green = data[index + 1];
                 const blue = data[index + 2];
-                const alpha = data[index + 3];
-                console.log(`red ${red}  green ${green}  blue ${blue}  alpha ${alpha}`);
                 const [ new_red, new_green, new_blue] = PALETTE_COLORS[findClosestPaletteColor(red, green, blue)];
                 data[index] = new_red;
                 data[index + 1] = new_green;

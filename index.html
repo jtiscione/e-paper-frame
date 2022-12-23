@@ -45,7 +45,7 @@
                     <div class="std-flex-padding"></div>
                 </div>
                 <div class="std-flex-container">
-                    <label for="scale">STROKE WIDTH</label>
+                    <label for="stroke-width-slider">STROKE WIDTH</label>
                     <input
                             type="range"
                             min="1"
@@ -67,7 +67,8 @@
                     <button class="toolbar-button" title="clear" id="clear-button">&nbsp;</button>
                 </div>
                 <div>
-                    <input id="sideways-checkbox" type="checkbox">SIDEWAYS POSITION</input>
+                    <input id="sideways-checkbox" type="checkbox"/>
+                    <label for="sideways-checkbox">SIDEWAYS POSITION</label>
                 </div>
             </div>
             <div class="std-flex-padding"></div>
@@ -95,7 +96,7 @@
             <div class="text-section">
                 <div class="std-flex-container">
                     <div class="std-flex-padding"></div>
-                    <label for="font-size-select">TEXT</label>
+                    <label for="font-name-select">TEXT</label>
                     <div class="std-flex-padding"></div>
                 </div>
                 <select id="font-name-select" name="font name" disabled>
@@ -127,14 +128,14 @@
                     <label for="font-size-select">FONT SIZE</label>
                     <select id="font-size-select" name="font size" disabled>
                         <option value="10pt">10pt</option>
-                        <option selected value="12pt">12pt</option>
+                        <option value="12pt">12pt</option>
                         <option value="14pt">14pt</option>
                         <option value="16pt">16pt</option>
                         <option value="18pt">18pt</option>
                         <option value="20pt">20pt</option>
                         <option value="24pt">24pt</option>
                         <option value="28pt">28pt</option>
-                        <option value="32pt">32pt</option>
+                        <option selected value="32pt">32pt</option>
                         <option value="36pt">36pt</option>
                         <option value="40pt">40pt</option>
                     </select>
