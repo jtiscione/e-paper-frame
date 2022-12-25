@@ -115,8 +115,10 @@ main = function(device_txt) {
     const fontSizeSelect = document.getElementById('font-size-select');
 
     const printButton = document.getElementById('print-button');
+    const printModal = document.getElementById('print-modal');
 
     const APP_MODES = {
+        UNINITIALIZED: 'UNINITIALIZED',
         DEFAULT: 'DEFAULT',
         PASTE_OPERATION: 'PASTE_OPERATION',
         DRAWING: 'DRAWING',
@@ -126,7 +128,8 @@ main = function(device_txt) {
         PRINT_OPERATION: 'PRINT_OPERATION',
     };
 
-    let appMode = APP_MODES.DEFAULT;
+    let appMode = device_txt ? APP_MODES.DEFAULT : APP_MODES.UNINITIALIZED;
+    setAppMode(appMode);
 
     let pastedImage = undefined;
     let scalingFactor = 1.0;
@@ -238,17 +241,22 @@ main = function(device_txt) {
 
     function setAppMode(mode) {
         // console.log(`changing setAppMode from ${appMode} to ${mode}`);
+
+        function disable(button, ...modes) {
+            button.disabled = modes.find(appMode) !== -1;
+        }
+
         appMode = mode;
         scaleSlider.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
         applyPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
         cancelPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
-        printButton.disabled = (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT || appMode === APP_MODES.PRINT_OPERATION);
-        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING || appMode === APP_MODES.PRINT_OPERATION) {
+        printButton.disabled = (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED) {
             draggableCanvas.style.display = 'none';
         }
 
         sidewaysCheckbox.disabled = (appMode === APP_MODES.TEXT);
-        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.PRINT_OPERATION);
+        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
         if (appMode === APP_MODES.TEXT) {
             text = '';
             draggableCanvas.style.top = `${mainCanvas.offsetTop}px`;
@@ -265,6 +273,12 @@ main = function(device_txt) {
         drawBoxButton.className = c_names(APP_MODES.DRAW_BOX);
         fillBoxButton.className = c_names(APP_MODES.FILL_BOX);
         textButton.className = c_names(APP_MODES.TEXT);
+
+        paintButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        drawBoxButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        fillBoxButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        textButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        clearButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
 
         fontNameSelect.disabled = (appMode !== APP_MODES.TEXT);
         fontSizeSelect.disabled = (appMode !== APP_MODES.TEXT);
@@ -532,6 +546,10 @@ main = function(device_txt) {
                 await new Promise((resolve) => setTimeout(resolve,1000));
             }
         }
+        // Unlock the interface after thirty seconds.
+        setTimeout(() => {
+            setAppMode(APP_MODES.DEFAULT);
+        }, 30000);
     }
 
     async function uploadCanvas() {
@@ -702,6 +720,7 @@ main = function(device_txt) {
 
     printButton.addEventListener('click', (e) => {
         uploadCanvas();
+        // printModal.style.display = 'block';
     });
 
     function drawTextOnDraggableCanvas() {
