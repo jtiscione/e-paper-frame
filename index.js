@@ -114,8 +114,10 @@ main = function(device_txt) {
     const fontNameSelect = document.getElementById('font-name-select');
     const fontSizeSelect = document.getElementById('font-size-select');
 
-    const printButton = document.getElementById('print-button');
+    const uploadButton = document.getElementById('upload-button');
     const printModal = document.getElementById('print-modal');
+    const uploadStatus = document.getElementById('upload-status');
+    const closeModalButton = document.getElementById('close-modal-button');
 
     const APP_MODES = {
         UNINITIALIZED: 'UNINITIALIZED',
@@ -125,7 +127,7 @@ main = function(device_txt) {
         DRAW_BOX: 'DRAW_BOX',
         FILL_BOX: 'FILL_BOX',
         TEXT: 'TEXT',
-        PRINT_OPERATION: 'PRINT_OPERATION',
+        UPLOAD_OPERATION: 'UPLOAD_OPERATION',
     };
 
     let appMode = device_txt ? APP_MODES.DEFAULT : APP_MODES.UNINITIALIZED;
@@ -241,23 +243,27 @@ main = function(device_txt) {
 
     function setAppMode(mode) {
         // console.log(`changing setAppMode from ${appMode} to ${mode}`);
+        const {
+            UNINITIALIZED, DEFAULT, PASTE_OPERATION, DRAWING, DRAW_BOX, FILL_BOX, TEXT, UPLOAD_OPERATION
+        } = APP_MODES;
 
-        function disable(button, ...modes) {
-            button.disabled = modes.find(appMode) !== -1;
+        function anyOf(...modes) {
+            return modes.indexOf(appMode) !== -1;
         }
 
         appMode = mode;
-        scaleSlider.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
-        applyPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
-        cancelPasteButton.disabled = (appMode !== APP_MODES.PASTE_OPERATION);
-        printButton.disabled = (appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.TEXT || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        if (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.DRAW_BOX || appMode === APP_MODES.DRAWING || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED) {
+        scaleSlider.disabled = (appMode !== PASTE_OPERATION);
+        applyPasteButton.disabled = (appMode !== PASTE_OPERATION);
+        cancelPasteButton.disabled = (appMode !== PASTE_OPERATION);
+        uploadButton.disabled = anyOf(PASTE_OPERATION, TEXT, UPLOAD_OPERATION, UNINITIALIZED);
+
+        if (anyOf(DEFAULT, DRAW_BOX, FILL_BOX, DRAWING, UPLOAD_OPERATION, UNINITIALIZED)) {
             draggableCanvas.style.display = 'none';
         }
 
-        sidewaysCheckbox.disabled = (appMode === APP_MODES.TEXT);
-        strokeWidthSlider.disabled = (appMode === APP_MODES.DEFAULT || appMode === APP_MODES.TEXT || appMode === APP_MODES.PASTE_OPERATION || appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        if (appMode === APP_MODES.TEXT) {
+        sidewaysCheckbox.disabled = anyOf(TEXT, PASTE_OPERATION, UPLOAD_OPERATION, UNINITIALIZED);
+        strokeWidthSlider.disabled = anyOf(DEFAULT, FILL_BOX, TEXT, PASTE_OPERATION, UPLOAD_OPERATION, UNINITIALIZED);
+        if (appMode === TEXT) {
             text = '';
             draggableCanvas.style.top = `${mainCanvas.offsetTop}px`;
             draggableCanvas.style.left = `${mainCanvas.offsetLeft}px`;
@@ -265,23 +271,23 @@ main = function(device_txt) {
             draggableCanvas.height = 0; // for now
             draggableCanvas.style.display = 'block';
         }
-        mainCanvas.style.cursor = (appMode === APP_MODES.TEXT ? 'text' : (appMode === APP_MODES.PRINT_OPERATION ? 'wait' : 'crosshair'));
+        mainCanvas.style.cursor = (appMode === TEXT ? 'text' : (appMode === UPLOAD_OPERATION ? 'wait' : 'crosshair'));
 
         const c_names = (mode) => (appMode === mode ? 'toolbar-button toolbar-button-selected' : 'toolbar-button');
 
-        paintButton.className = c_names(APP_MODES.DRAWING);
-        drawBoxButton.className = c_names(APP_MODES.DRAW_BOX);
-        fillBoxButton.className = c_names(APP_MODES.FILL_BOX);
-        textButton.className = c_names(APP_MODES.TEXT);
+        paintButton.className = c_names(DRAWING);
+        drawBoxButton.className = c_names(DRAW_BOX);
+        fillBoxButton.className = c_names(FILL_BOX);
+        textButton.className = c_names(TEXT);
 
-        paintButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        drawBoxButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        fillBoxButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        textButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
-        clearButton.disabled = (appMode === APP_MODES.PRINT_OPERATION || appMode === APP_MODES.UNINITIALIZED);
+        paintButton.disabled = anyOf(UPLOAD_OPERATION, UNINITIALIZED);
+        drawBoxButton.disabled = anyOf(UPLOAD_OPERATION, UNINITIALIZED);
+        fillBoxButton.disabled = anyOf(UPLOAD_OPERATION, UNINITIALIZED);
+        textButton.disabled = anyOf(UPLOAD_OPERATION, UNINITIALIZED);
+        clearButton.disabled = anyOf(UPLOAD_OPERATION, UNINITIALIZED);
 
-        fontNameSelect.disabled = (appMode !== APP_MODES.TEXT);
-        fontSizeSelect.disabled = (appMode !== APP_MODES.TEXT);
+        fontNameSelect.disabled = (appMode !== TEXT);
+        fontSizeSelect.disabled = (appMode !== TEXT);
     }
 
     function findClosestPaletteColor(r, g, b) {
@@ -515,12 +521,17 @@ main = function(device_txt) {
         return b64_buffers;
     }
 
+    function updateUploadStatus(additionalLine) {
+        uploadStatus.innerHTML += `<div>${additionalLine}</div>`;
+    }
+
     // const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
     async function sequentialPost(buffers) {
         let block = 0;
         let sequence_retries = 0; // max 3
         let block_retries = 0; // max 2
-        while (block < buffers.length && sequence_retries < 3) {
+        while (appMode === APP_MODES.UPLOAD_OPERATION && block < buffers.length && sequence_retries < 3) {
+            updateUploadStatus(`Uploading block ${block + 1} of ${buffers.length}${block_retries ? " (retry #"+block_retries+")" : ""}...`);
             const response = await fetch(`/block${block}`, {
                 method: 'POST',
                 headers: {
@@ -528,11 +539,13 @@ main = function(device_txt) {
                 },
                 body: buffers[block],
             });
+            updateUploadStatus(`${response.status} ${response.statusText}`);
             console.log(`${response.status} ${response.statusText}`);
             if (response.status >= 200 && response.status < 300) {
                 block_retries = 0;
                 block++;
             } else if (response.status === 409) {
+                updateUploadStatus(`Restarting sequence...`);
                 block_retries = 0;
                 sequence_retries++;
                 block = 0;
@@ -546,13 +559,28 @@ main = function(device_txt) {
                 await new Promise((resolve) => setTimeout(resolve,1000));
             }
         }
-        // Unlock the interface after thirty seconds.
-        setTimeout(() => {
-            setAppMode(APP_MODES.DEFAULT);
-        }, 30000);
+        if (block === buffers.length) {
+            updateUploadStatus('SUCCESS. Display will be busy for 15 seconds.');
+        } else if (appMode !== APP_MODES.UPLOAD_OPERATION) {
+            updateUploadStatus("Canceled.");
+        } else {
+            updateUploadStatus("Upload failed.");
+        }
+        setAppMode(APP_MODES.DEFAULT);
     }
 
+    closeModalButton.addEventListener('click', (e) => {
+        if (appMode === APP_MODES.UPLOAD_OPERATION) {
+            setAppMode(APP_MODES.DEFAULT);
+        } else {
+            printModal.style.display = 'none';
+            uploadStatus.innerHTML = "";
+        }
+    });
+
     async function uploadCanvas() {
+        setAppMode(APP_MODES.UPLOAD_OPERATION);
+        printModal.style.display = 'block';
         if (device_txt === 'EPD_2in9_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas);
             sequentialPost([black, red]);
@@ -563,6 +591,7 @@ main = function(device_txt) {
             const b64_buffers = extractHMSBFromCanvas(mainCanvas);
             sequentialPost(b64_buffers);
         }
+        closeModalButton.disabled = false;
     }
 
     //on paste INTO the canvas
@@ -718,9 +747,8 @@ main = function(device_txt) {
         setAppMode(APP_MODES.DEFAULT);
     });
 
-    printButton.addEventListener('click', (e) => {
+    uploadButton.addEventListener('click', (e) => {
         uploadCanvas();
-        // printModal.style.display = 'block';
     });
 
     function drawTextOnDraggableCanvas() {

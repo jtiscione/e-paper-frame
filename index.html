@@ -38,9 +38,9 @@
                     <button title="dark gray" id="darkgrey" class="palette-button" style="background-color:darkgrey"></button>
                     <button title="black" id="black" class="palette-button palette-button-selected" style="background-color:black"></button>
                     <button title="red" id="red" class="palette-button" style="background-color:red"></button>
-                    <button title="orange" id="orange" class="palette-button" style="background-color:orange"></button>
+                    <button title="orange" id="orange" class="palette-button" style="background-color:#f16529"></button>
                     <button title="yellow" id="yellow" class="palette-button" style="background-color:yellow"></button>
-                    <button title="green" id="green" class="palette-button" style="background-color:green"></button>
+                    <button title="green" id="green" class="palette-button" style="background-color:#00ff00"></button>
                     <button title="blue" id="blue" class="palette-button" style="background-color:blue"></button>
                     <div class="std-flex-padding"></div>
                 </div>
@@ -141,8 +141,8 @@
                     </select>
                 </div>
             </div>
-            <div class="print-section">
-                <button id="print-button" title="send to e-ink device" class="print-button">
+            <div class="upload-section">
+                <button id="upload-button" title="send to e-ink device" class="upload-button">
                     UPLOAD
                 </button>
             </div>
@@ -151,10 +151,9 @@
         <div id="print-modal" class="modal">
             <div class="modal-content">
                 <h1>UPLOADING IMAGE...</h1>
-                <div class="status">
-                    <div>Uploading...</div>
+                <div id="upload-status" class="upload-status">
                 </div>
-                <button class="close">CLOSE</button>
+                <button id="close-modal-button" class="modal-button">CLOSE</button>
             </div>
         </div>
     </body>

@@ -110,16 +110,12 @@ body {
     background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABmJLR0QA/wD/AP+gvaeTAAACHElEQVRIibXUS4iOYRQH8N/cMppkYorRjNvGLSkLG1HKggWyIBQrC1JIIgsbl4WVIkoyYZIFilFjw4JcykhTcimTGgoLMRmUmcZncd6veef9LmYy869nc57z/M95zv+cU2Vs0IpzqB4L8tXIJefXaJNX4HkqQFv+YjImjEKAzSnyHDbCPgyI76z7D/IadKXIezAevqWMjxPn9WhB7QgC7MxkfyF/0ZEyXkpsLehD8zDJ6/AxE2BF/nIGzuAE6hNb7QjIYT6epcjfo7KU80ysxewyhAtFOQfwGacxB8txA8dLPdyK30kW/dhewq/V0HLk8Ad3sFK0awGqhPLpRz8xLuO3AU04hu4igXJJAgVTXF/CuTHj14bX2CV0OokXRd7tLfaLBxmnjtRdNQ4IjS7irRB2N6aJ3fMk9fZRsQCNuIp3uGawk2pEC+dwD1swC+1iuDqFXtOxB7eE8MPC3CSbbAlui8XWgJv4ii84ik3+0eYTsQpXRDcV0yZ/noqhasAOvMQnLMmS1gkNukTLFSPrEzur2F2v2GuLDQ5sAU6VybQXy4TA5X6Uw/5SASoNipk+r7AIhzP2u0kZ07YeUeKSqMAR3MdlseObcD1D9AZTDF2WORwsR57FGjGV2bp3i91zPmPvVDj5ZTFJbNq+FEk7puJshvwH5o2EPI1mHMJSLMDDDHm/2FEFqBpmgO8J6Ycky2rxq1rR0tuERgX4CzDv2LckWMf8AAAAAElFTkSuQmCC');
 }
 
-#post-button {
-    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABmJLR0QA/wD/AP+gvaeTAAABIElEQVRIid3VPy9DYRQG8B/RRWJAO5tFty4GJpGY8QUs7eqb2A3iE1jYMDN0MRn8SSS2SmphktTQ07TqbXp7tSGe5Mm99/x77nvee8/Ld5TwjLWE7xhHCft65BT7HTOJ4CYOcZ/wlRM2uIuc1wH+zKgHf4Q5nGElngvabanjLVgPWyFiyjiN3KGooIVqj20+iraCN772uxr2Sn+x1B6k0MQmzuOtN/CSJTGrQEdkK+4zFYepuBZwgFXMYhlPIxQqYgm3eMc19vHRCdjV7e+4uAPTIbCQdckjYLFXYGL4VYGa9keQhbU8AmPB/xF4nEDtB7qj4gJ72n9yCds5i56ggStcDgpKTdNhGDhNJ74HKXRWkIeZzoOG9vmaB42ceX8Yn4ZOVFBAwbX+AAAAAElFTkSuQmCC');
-}
-
 .text-section {
     margin: 20px;
     padding: 5px;
 }
 
-.print-button {
+.upload-button {
     background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABmJLR0QA/wD/AP+gvaeTAAABIElEQVRIid3VPy9DYRQG8B/RRWJAO5tFty4GJpGY8QUs7eqb2A3iE1jYMDN0MRn8SSS2SmphktTQ07TqbXp7tSGe5Mm99/x77nvee8/Ld5TwjLWE7xhHCft65BT7HTOJ4CYOcZ/wlRM2uIuc1wH+zKgHf4Q5nGElngvabanjLVgPWyFiyjiN3KGooIVqj20+iraCN772uxr2Sn+x1B6k0MQmzuOtN/CSJTGrQEdkK+4zFYepuBZwgFXMYhlPIxQqYgm3eMc19vHRCdjV7e+4uAPTIbCQdckjYLFXYGL4VYGa9keQhbU8AmPB/xF4nEDtB7qj4gJ72n9yCds5i56ggStcDgpKTdNhGDhNJ74HKXRWkIeZzoOG9vmaB42ceX8Yn4ZOVFBAwbX+AAAAAElFTkSuQmCC');
     width: 100px;
     height: 40px;
@@ -150,8 +146,8 @@ body {
     width: 600px;
 }
 
-.modal-content .status {
-    height: 300px;
+.modal-content .upload-status {
+    height: 360px;
     text-align: left;
     overflow-y: scroll;
     border: 1px solid;
@@ -160,14 +156,13 @@ body {
 }
 
 /* The Close Button */
-.close {
-    font-size: 28px;
-    font-weight: bold;
+.modal-button {
+    font-size: 18px;
     margin: 10px;
 }
 
-.close:hover,
-.close:focus {
+.modal-button:hover,
+.modal-button:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;

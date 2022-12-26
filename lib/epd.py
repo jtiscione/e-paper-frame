@@ -68,6 +68,9 @@ class EPD:
 
     def display(self, image):
         pass
+    
+    def displayMessage(self, message):
+        pass
 
     def sleep(self):
         pass
@@ -137,6 +140,10 @@ class EPD_2in9_B(EPD):
                 self.send_data(self.buffer_red[i + j * int(self.width / 8)])
 
         self.TurnOnDisplay()
+    
+        
+    def displayMessage(self, message):
+        pass
 
     def sleep(self):
         self.send_command(0X02) # power off
@@ -485,6 +492,9 @@ class EPD_3in7(EPD):
         self.send_command(0x20)
 
         self.ReadBusy()
+        
+    def displayMessage(self, message):
+        pass
 
     def sleep(self):
         self.send_command(0X50)
@@ -654,6 +664,9 @@ class EPD_5in65(EPD):
         self.send_command(0x02)   # 0x02
         self.BusyLow()
         self.delay_ms(200)
+        
+    def displayMessage(self, message):
+        pass
 
     def sleep(self):
         self.delay_ms(100)
@@ -662,9 +675,8 @@ class EPD_5in65(EPD):
         self.delay_ms(100)
         self.digital_write(self.reset_pin, 1)
 
-    # Will receive 8 POST blocks of 22400 base64 characters encoding 16800 bytes each.
-    # Each block is a horizontal stripe of data: 56 rows of 448 pixels
-    # with each pixel occupying half a byte.
+    # Will receive 8 POST requests, each with a block of 22400 base64 characters encoding 16800 bytes each.
+    # Each block is a horizontal stripe of 56 rows of 448 pixels with each pixel occupying half a byte.
     def process_data_block(self, data, block_number, send_response):
         print('process_data_block() data length', len(data))
         if (block_number == 0):
