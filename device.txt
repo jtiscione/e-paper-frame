@@ -1,1 +1,5 @@
-EPD_5in65
+# Uncomment the appropriate line for the given device
+
+# EPD_2in9_B  # 2.9 inch red/black/white display
+# EPD_3in7  # 3.7 inch black / dark gray / light gray / white display
+EPD_5in65  # 5.65 inch 7 color display

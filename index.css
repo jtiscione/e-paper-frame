@@ -20,7 +20,7 @@ body {
     position: relative;
     transform: rotate(0);
     transition-duration: 1s;
-
+    margin: 0;
 }
 
 #main-canvas {
@@ -155,7 +155,6 @@ body {
     margin: 10px;
 }
 
-/* The Close Button */
 .modal-button {
     font-size: 18px;
     margin: 10px;
@@ -166,4 +165,10 @@ body {
     color: black;
     text-decoration: none;
     cursor: pointer;
+}
+
+.footer {
+    width: 500px;
+    text-align: right;
+    margin: auto;
 }

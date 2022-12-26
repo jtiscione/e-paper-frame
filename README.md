@@ -10,11 +10,11 @@ You can paste an image, scale and place it, and perform Floyd Steinberg
 dithering on the result. There are also tools for scribbling, drawing boxes,
 and adding text.
 
-When you are ready you can render the image on the display, the app will
-format the image data into one HLSB buffer per color (excluding white)
-and send the data base-64 encoded to the Pico W via HTTP POST.
+When you are ready you can render the image on the display, the app will send the
+encoded image data to the Pico W using a series of HTTP POST requests.
 
-The Pico W needs a file device.txt containing one of the following strings:
+To identify the e-ink device, the Pico W needs a file named device.txt containing
+one of the following device codes:
 
 EPD_2in9_B       (for the 2.9 inch red/black/white display)
 EPD_3in7         (for the 3.7 inch black / dark gray / light gray / white display)

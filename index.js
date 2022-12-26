@@ -28,14 +28,14 @@ main = function(device_txt) {
         // FrameBuffer(buffer, self.width, self.height, framebuf.GS4_HMSB)
         EPD_WIDTH = 600;
         EPD_HEIGHT = 448;
-        AVAILABLE_COLORS = ['white', 'clean', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
+        AVAILABLE_COLORS = ['white', 'blank', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
     }
 
    document.getElementById('caption').innerHTML = device_txt;
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],
-        clean: [0xee, 0xee, 0xee],
+        blank: [0xee, 0xee, 0xee],
         lightgrey: [0xd4, 0xd4, 0xd4],
         darkgrey: [0xaa, 0xaa, 0xaa],
         black: [0x00, 0x00, 0x00],
@@ -46,18 +46,17 @@ main = function(device_txt) {
         blue: [0x00, 0x00, 0xff],
     };
 
-    // Slightly favors neutral colors (mostly for text)
     const PALETTE_WEIGHTS = {
         white: 1,
-        clean: 1,
+        blank: 1,
         lightgrey: 1,
         darkgrey: 1,
         black: 1,
-        red: 0.75,
-        orange: 0.75,
-        yellow: 0.75,
-        green: 0.75,
-        blue: 0.75,
+        red: 1,
+        orange: 0.7, // Not at an RGB cube vertex, not a neutral color; must be smaller target
+        yellow: 1,
+        green: 1,
+        blue: 1,
     };
 
     const sidewaysCheckbox = document.getElementById('sideways-checkbox');
@@ -71,9 +70,14 @@ main = function(device_txt) {
         if (event.currentTarget.checked) {
             pane.style.transform = 'rotate(-90deg)';
             SIDEWAYS = true;
+            if (EPD_WIDTH > EPD_HEIGHT) {
+                // Wide canvas will cover controls if turned sideways
+                pane.style.margin = `${(EPD_WIDTH - EPD_HEIGHT) / 2}px 0`;
+            }
         } else {
             pane.style.transform = 'rotate(0)';
             SIDEWAYS = false;
+            pane.style.margin = '0';
         }
     });
 
@@ -82,7 +86,7 @@ main = function(device_txt) {
     mainCanvas.height = EPD_HEIGHT;
     const mainContext = mainCanvas.getContext('2d');
     mainContext.willReadFrequently = true;
-    mainContext.fillStyle = AVAILABLE_COLORS.indexOf('clean') !== -1 ? '#eeeeee' : 'white';
+    mainContext.fillStyle = AVAILABLE_COLORS.indexOf('blank') !== -1 ? '#eeeeee' : 'white';
     mainContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
     const draggableCanvas = document.getElementById('draggable-canvas');
@@ -138,7 +142,7 @@ main = function(device_txt) {
 
     let selectedColor = 'black';
 
-    const style = (color) => (color === 'clean' ? '#eeeeee' : color);
+    const style = (color) => (color === 'blank' ? '#eeeeee' : color);
 
     let strokeWidth = parseInt(strokeWidthSlider.value);
 
@@ -237,7 +241,6 @@ main = function(device_txt) {
         mainContext.drawImage(workCanvas, 0, 0);
         workContext.clearRect(0, 0, workCanvas.width, workCanvas.height);
     }
-    mainCanvas.addEventListener('mouseleave', mouseUpListener);
 
     mainCanvas.addEventListener('mouseup', mouseUpListener);
 
@@ -491,7 +494,7 @@ main = function(device_txt) {
             if (color === 'orange') {
                 return 0x06;
             }
-            return 0x07; // the "clean" color
+            return 0x07; // the blank or "clean" color
         }
 
         let buffer_index = 0;
@@ -828,9 +831,12 @@ window.onload = function() {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-            // The request is done; did it work?
-            if (xhr.status === 200) {
-                main(xhr.responseText);
+            // Request finished
+            if (xhr.status === 200 && xhr.responseText) {
+                const lines = xhr.responseText.split('\n').filter((e) => e.trim() && !e.trim().startsWith("#"));
+                const line = lines.length ? lines[0] : '';
+                const nocomment = line.indexOf('#') === -1 ? line : line.substring(0, line.indexOf("#"));
+                main(nocomment.trim());
             } else {
                 main('');
             }

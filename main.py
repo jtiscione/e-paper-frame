@@ -25,7 +25,15 @@ def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
 rp2.country("US")
 
 with open('./device.txt', 'r') as device_txt:
-    device = device_txt.read()
+    device_lines = device_txt.read()
+    for line in device_lines.split("\n"):
+        stripped = line.strip()
+        if len(stripped) > 0 and stripped.startswith("#") is False:
+            comment_pos = stripped.find("#")
+            nocomment = stripped if comment_pos == -1 else stripped[0: comment_pos].strip()
+            if len(nocomment) > 0:
+                device = nocomment
+                break
 
 print('device', device)
 
