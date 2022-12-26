@@ -167,8 +167,16 @@ body {
     cursor: pointer;
 }
 
+
+
+.instructions {
+    width: 600px;
+    text-align: left;
+    margin: auto;
+}
+
 .footer {
-    width: 500px;
+    width: 600px;
     text-align: right;
     margin: auto;
 }
