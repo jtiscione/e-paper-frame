@@ -7,11 +7,11 @@ It serves up a crude MS Paint clone written in JavaScript, written specifically
 for an e-ink display.
 
 You can paste an image, scale and place it, and perform Floyd Steinberg
-dithering on the result. There are also tools for scribbling, drawing boxes,
-and adding text.
+dithering on the result, restricting pixels to colors supported by the display.
+There are also tools for scribbling, drawing boxes, and adding text.
 
-When you are ready you can render the image on the display, the app will send the
-encoded image data to the Pico W using a series of HTTP POST requests.
+Once you click the upload button to render the image on the display, the app will send the encoded image data to the
+Pico W using a series of HTTP POST requests.
 
 # SUPPORTED DEVICES
 
@@ -44,6 +44,14 @@ The UI allows use of 7 colors (as well as a blank color with no ink)
 ![5.65-inch Van Gogh UI](https://user-images.githubusercontent.com/5413726/209608489-0be822aa-fd57-49d8-bf23-fdae95ebe289.png)
 This display has a resolution of 600 x 448 pixels.
 
+# WIRING
+All of these e-ink devices are assumed to be wired as follows:
+
+- RST PIN: GPIO 12
+- DC PIN: GPIO 8
+- CS PIN: GPIO 9
+- BUSY PIN: GPIO 13
+
 # SETUP
 The following files must be present in the Pico W filesystem:
 - `index.html`
@@ -69,7 +77,7 @@ The Pico usually shows up on the local wireless network as a device named `PYBD`
 # IMPLEMENTATION NOTES
 
 Waveshare's documentation is limited; their sample code typically abstracts away the device into an object that uses a
-large MicroPython FrameBuffer.
+large MicroPython FrameBuffer causing memory problems.
 
 To avoid memory problems on the Pico, I avoided using FrameBuffer; most image processing is being done on the client
 using JavaScript, which has much more memory and resources available.
@@ -79,17 +87,20 @@ When uploading, the image data is processed into a form compatible with the Micr
 expected by the device. It is subsequently base64 encoded to be sent in a series of HTTP POST requests.
 
 As the Pico receives each POST request, it base64 decodes the data and streams it to the SPI channel (along
-with any necessary device commands, etc.) before responding to the request with 200 OK. The protocol surrounding this
-process varies slightly according to the device, since they all accept data in different FrameBuffer formats such as
-FrameBuffer.HLSB and FrameBuffer.HMSB, and the procedure is a little different from one to the next:
+with any necessary device commands, etc.) before responding to the request with 200 OK. The client will only then
+proceed with the next request. The protocol surrounding this process varies slightly according to the device, since they
+all accept data in different FrameBuffer formats such as FrameBuffer.HLSB and FrameBuffer.HMSB, and the procedure is a
+little different from one to the next:
 
-- The 2.9 inch red/black display receives 2 POST requests, one with HLSB data for black and one with HLSB data for red.
-- The 3.7 inch 4-color display receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to th device sequentially for a 4 color image result.)
-- The 5.65 inch 7-color display receives 8 POST requests. They contain data for one large HMSB buffer split into 8 horizontal bands (since the Pico is too memory constrained to handle them all at once).
+- `EPD_2in9B`: receives 2 POST requests, one with HLSB data for black and one with HLSB data for red.
+- `EPD_3in7`: receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to th device sequentially for a 4 color result.)
+- `EPD_5in65`: receives 8 POST requests. They contain data for one large HMSB buffer split into 8 horizontal bands (since the Pico is too memory constrained to handle them all at once).
 
-POST endpoints are of the form `/block0`, `/block1`, etc. and the sequence is expected by the server. Unexpected requests
-result in a 409 error sent to the client, which will retry up to several times starting with `/block0`.
-Once the required amount of POST requests have been processed and streamed to the SPI channel, the Pico commands the e-ink display to show the data.
+POST endpoints are of the form `/block0`, `/block1`, etc. and the sequence is expected by the server.
+Requests received in an unexpected order result in an HTTP 409 error sent to the client, which will retry up to several
+times starting with `/block0`.
+
+Once the required amount of POST requests have been processed and streamed to the SPI channel, the Pico commands the e-ink display to show the image.
 
 # TODO
 
