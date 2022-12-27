@@ -27,4 +27,4 @@ ssid="My_SSID"
 psk="Password123"
 
 The remaining files that must be present on the Pico W are index.html, index.css, index.js,
-and main.py.
+main.py, and lib/epd.py.
