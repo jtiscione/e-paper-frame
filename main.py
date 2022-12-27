@@ -193,8 +193,7 @@ while True:
                             index = 0
                             while index < len(content):
                                 # print(content[index:index + 800])
-                                cl.send(content[index:index + 800])
-                                index += 800
+                                index += cl.send(content[index:index + 800])
                             print('Successfully loaded content', uri)
                         else:
                             cl.send('HTTP/1.0 400 Bad Request\r\n')
