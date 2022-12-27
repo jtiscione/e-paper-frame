@@ -528,7 +528,6 @@ main = function(device_txt) {
         uploadStatus.innerHTML += `<div>${additionalLine}</div>`;
     }
 
-    // const READY_STATES = ['UNSENT', 'OPENED', 'HEADERS_RECEIVED', 'LOADING', 'DONE'];
     async function sequentialPost(buffers) {
         let block = 0;
         let sequence_retries = 0; // max 3
