@@ -23,14 +23,13 @@ psk = ''
 #
 try:
     with open('./wpa_supplicant.conf', 'r') as wpa:
-        lines = wpa.read().split("\n")
-        for line in lines:
-            ssid_match = re.search("ssid=\"(.*)\"", line)
-            if ssid_match is not None:
-                ssid = ssid_match.group(1)
-            psk_match = re.search("psk=\"(.*)\"", line)
-            if psk_match:
-                psk = psk_match.group(1)
+        lines = wpa.read()
+        ssid_match = re.search("ssid\s*=\s*\"(\w+)\"", lines)
+        if ssid_match is not None:
+            ssid = ssid_match.group(1)
+        psk_match = re.search("psk\s*=\s*\"(\w+)\"", lines)
+        if psk_match:
+            psk = psk_match.group(1)
         
 except OSError: # open failed
     print('No wpa_supplicant.conf file.')
