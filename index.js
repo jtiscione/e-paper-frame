@@ -53,7 +53,7 @@ main = function(device_txt) {
         darkgrey: 1,
         black: 1,
         red: 1,
-        orange: 0.7, // Not at an RGB cube vertex, not a neutral color; must be smaller target
+        orange: 0.5, // Not at an RGB cube vertex, not a neutral color; must be smaller target
         yellow: 1,
         green: 1,
         blue: 1,
@@ -293,8 +293,12 @@ main = function(device_txt) {
         fontSizeSelect.disabled = (appMode !== TEXT);
     }
 
+    /*
+     * This is a function for performing the non-trivial task of identifying which color in the palette is closest match
+     * for an arbitrary input color.
+     */
     function findClosestPaletteColor(r, g, b) {
-        // This is a really crude version
+        // This is a really trivial implementation
         let lowestColor = undefined;
         let lowestDistance = 1000;
         AVAILABLE_COLORS.forEach((color) => {

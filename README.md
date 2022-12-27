@@ -2,16 +2,18 @@
 
 #### Remotely control an e-ink display with a Raspberry Pi Pico W.
 
-This project will run a little HTTP server on your local network.
-It serves up a crude MS Paint clone written in JavaScript, written specifically
-for an e-ink display.
+This project is designed to support e-ink displays sold by WaveShare which come with a socket for plugging in a Pico.
+With a standard Pico, these things are generally not very useful since they gobble up all the pins, making it impossible
+to connect anything else for getting input.
 
-You can paste an image, scale and place it, and perform Floyd Steinberg
-dithering on the result, restricting pixels to colors supported by the display.
-There are also tools for scribbling, drawing boxes, and adding text.
+This project runs a little HTTP server on your local network, using a Pico W connected to an e-ink display.
+It serves up a crude MS Paint clone written in JavaScript, designed for e-ink.
+
+You can paste an image, scale and place it, and perform Floyd Steinberg dithering on the result, restricting pixels to
+colors supported by the display. There are also tools for scribbling, drawing boxes, and adding text.
 
 Once you click the upload button to render the image on the display, the app will send the encoded image data to the
-Pico W using a series of HTTP POST requests.
+Pico W using a series of HTTP POST requests. The image will then remain displayed even if power is disconnected.
 
 # SUPPORTED DEVICES
 
@@ -36,13 +38,16 @@ UI allows use of black, white, light gray, and dark gray.
 Since this is a narrow and tall display (280 x 480 pixels), the UI positions it sideways by default.
 
 ### EPD_5in65
-5.65 inch 7-color ACeP display:
+5.65 inch 7-color ACeP display: This display has a resolution of 600 x 448 pixels.
 ![5.65-inch Van Gogh](https://user-images.githubusercontent.com/5413726/209608364-7d4c11ec-20b8-4f9b-a6ed-3362518f4197.png)
-The frame above is 3D printable; model files are in the `stl`folder. (It is designed to fit the Pico e-Paper module.)
+Colors are certainly discernible, but don't exactly jump out at you.
+
+(The frame above is 3D printable; model files are in the `stl`folder. It is designed to fit the Pico e-Paper module.)
 
 The UI allows use of 7 colors (as well as a blank color with no ink)
 ![5.65-inch Van Gogh UI](https://user-images.githubusercontent.com/5413726/209608489-0be822aa-fd57-49d8-bf23-fdae95ebe289.png)
-This display has a resolution of 600 x 448 pixels.
+Clearly the colors in the UI appear much more vibrant than they do on the e-ink display, but they are the same set of colors,
+so fixing this would probably involve adjusting the UI appearance.
 
 # WIRING
 All of these e-ink devices are assumed to be wired as follows:
@@ -93,7 +98,7 @@ all accept data in different FrameBuffer formats such as FrameBuffer.HLSB and Fr
 little different from one to the next:
 
 - `EPD_2in9B`: receives 2 POST requests, one with HLSB data for black and one with HLSB data for red.
-- `EPD_3in7`: receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to th device sequentially for a 4 color result.)
+- `EPD_3in7`: receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to the device sequentially for a 4 color result.)
 - `EPD_5in65`: receives 8 POST requests. They contain data for one large HMSB buffer split into 8 horizontal bands (since the Pico is too memory constrained to handle them all at once).
 
 POST endpoints are of the form `/block0`, `/block1`, etc. and the sequence is expected by the server.
