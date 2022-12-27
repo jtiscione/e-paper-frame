@@ -298,7 +298,7 @@ main = function(device_txt) {
      * for an arbitrary input color.
      */
     function findClosestPaletteColor(r, g, b) {
-        // This is a really trivial implementation
+        // This is a really trivial implementation that can probably be improved
         let lowestColor = undefined;
         let lowestDistance = 1000;
         AVAILABLE_COLORS.forEach((color) => {
