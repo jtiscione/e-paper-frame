@@ -8,21 +8,38 @@ import time
 import rp2
 import gc
 import binascii
+import re
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
-def extract_urlencoded_param(params, paramName, asBytes=False, asNumber=False):
-    startIndex = params.find(paramName+'=')
-    endIndex = params.find('&', startIndex)
-    if endIndex < 0:
-        endIndex = len(params)
-    if (asBytes):
-        return bytearray(binascii.a2b_base64(params[startIndex + len(paramName) + 1 : endIndex]))
-    val = params[startIndex + len(paramName) + 1 : endIndex]
-    if (asNumber):
-        return int(val)
-    return val
-
 rp2.country("US")
+
+ssid = ''
+psk = ''
+
+# Looks in a file wpa_supplicant.conf for two lines of the form
+#
+#        ssid="My_Network_SSID"
+#        psk="Password123"
+#
+try:
+    with open('./wpa_supplicant.conf', 'r') as wpa:
+        lines = wpa.read().split("\n")
+        for line in lines:
+            ssid_match = re.search("ssid=\"(.*)\"", line)
+            if ssid_match is not None:
+                ssid = ssid_match.group(1)
+            psk_match = re.search("psk=\"(.*)\"", line)
+            if psk_match:
+                psk = psk_match.group(1)
+        
+except OSError: # open failed
+    print('No wpa_supplicant.conf file.')
+
+if (ssid == '' or psk == ''):
+    print('No SSID credentials.')
+    raise SystemExit
+
+print("Network SSID", ssid)
 
 with open('./device.txt', 'r') as device_txt:
     device_lines = device_txt.read()
@@ -37,12 +54,10 @@ with open('./device.txt', 'r') as device_txt:
 
 print('device', device)
 
-mem_info()
-
 led = machine.Pin("LED", machine.Pin.OUT)
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
-wlan.connect("Inversion_Lair", "789yuihjk")
+wlan.connect(ssid, psk)
 
 while not wlan.isconnected() and wlan.status() >= 0:
     print("Waiting to connect.")
@@ -104,31 +119,26 @@ while True:
             buffer = memoryview(incoming_buffer)
             buffer_index = 0
             chunk_length = 0
-            prev_chunk_length = 0
 
             while True:
-                prev_chunk_length = chunk_length
-                print("Receiving chunk...")
                 try:
-                    chunk_length = cl.readinto(buffer[buffer_index: buffer_index + 800], 800)
-                except:
-                    print('except')
+                    chunk_length = cl.readinto(buffer[buffer_index: buffer_index + 1], 1)
+                except Exception as e:
+                    print(e)
                     break
-                print("Received.")
                 buffer_index += chunk_length
-                if prev_chunk_length > chunk_length:
+                if chunk_length == 0:
                     break
-            print("Done loop...")
+
             gc.collect()
             print("Buffer length", len(buffer[0: buffer_index]))
-            print("Decoding buffer")
             try:
                 params = bytes(buffer[0: buffer_index]).decode('ascii')
-            except:
+            except Exception as e:
+                print(e)
                 cl.send("HTTP/1.0 500 Server error\r\n")
                 cl.close()
                 continue
-
             try:
                 data = bytes(binascii.a2b_base64(params))
             except:
@@ -149,7 +159,8 @@ while True:
                 cl.close()
             try:
                 epd.process_data_block(data, block_number, send_response)
-            except:
+            except Exception as e:
+                print(e)
                 send_response(500, 'Server error\r\n')
             data = None
             gc.collect()
@@ -170,25 +181,28 @@ while True:
                     mimetype = 'text/javascript'
                 if extension == '.css':
                     mimetype = 'text/css'
-                if extension == '.json':
-                    mimetype = 'application/json'
                 if extension == '.txt':
                     mimetype = 'text/plain'
                 content = ''
                 print(f'GET {uri}')
-                with open(f'{uri}', 'r') as requestedFile:
-                    content = requestedFile.read()
-                if len(content) > 0:
-                    cl.send(f'HTTP/1.0 200 OK\r\nContent-type: {mimetype}\r\n\r\n')
-                    index = 0
-                    while index < len(content):
-                        if (mimetype == 'text/javascript'):
-                            print(content[index:index + 800])
-                        cl.send(content[index:index + 800])
-                        index += 800
-                    print('Successfully loaded content', uri)
+                if mimetype != '':
+                    try:
+                        with open(f'{uri}', 'r') as requestedFile:
+                            content = requestedFile.read()
+                        if len(content) > 0:
+                            cl.send(f'HTTP/1.0 200 OK\r\nContent-type: {mimetype}\r\n\r\n')
+                            index = 0
+                            while index < len(content):
+                                # print(content[index:index + 800])
+                                cl.send(content[index:index + 800])
+                                index += 800
+                            print('Successfully loaded content', uri)
+                        else:
+                            cl.send('HTTP/1.0 400 Bad Request\r\n')
+                    except:
+                        cl.send('HTTP/1.0 404 Not Found\r\n')
                 else:
-                    cl.send('HTTP/1.0 400 Bad Request\r\n')
+                    cl.send('HTTP/1.0 403 Forbidden\r\n')
                 cl.close()
 
             except Exception as e:
