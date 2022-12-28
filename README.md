@@ -40,14 +40,11 @@ Since this is a narrow and tall display (280 x 480 pixels), the UI positions it 
 ### EPD_5in65
 5.65 inch 7-color ACeP display: This display has a resolution of 600 x 448 pixels.
 ![5.65-inch Van Gogh](https://user-images.githubusercontent.com/5413726/209608364-7d4c11ec-20b8-4f9b-a6ed-3362518f4197.png)
-Colors are certainly discernible, but don't exactly jump out at you.
 
 (The frame above is 3D printable; model files are in the `stl`folder. It is designed to fit the Pico e-Paper module.)
 
 The UI allows use of 7 colors (as well as a blank color with no ink)
 ![5.65-inch Van Gogh UI](https://user-images.githubusercontent.com/5413726/209608489-0be822aa-fd57-49d8-bf23-fdae95ebe289.png)
-Clearly the colors in the UI appear much more vibrant than they do on the e-ink display, but they are the same set of colors,
-so fixing this would probably involve adjusting the UI appearance.
 
 # WIRING
 All of these e-ink devices are assumed to be wired as follows:
@@ -126,5 +123,10 @@ So far this project only supports e-ink devices I actually have.
 - [ ] EPD_7in5B is the red/black version
 
 Will check these off as support gets added.
+
+Additional TODOs:
+
+- [ ] Support touch events on mobile devices
+- [ ] Improve Floyd-Steinberg palette color selection
 
 In addition, the JavaScript code needs to support touch events on mobile devices.
