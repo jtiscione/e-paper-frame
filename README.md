@@ -2,10 +2,6 @@
 
 #### Remotely control an e-ink display with a Raspberry Pi Pico W.
 
-This project is designed to support e-ink displays sold by WaveShare which come with a socket for plugging in a Pico.
-With a standard Pico, these things are generally not very useful since they gobble up all the pins, making it impossible
-to connect anything else for getting input.
-
 This project runs a little HTTP server on your local network, using a Pico W connected to an e-ink display.
 It serves up a crude MS Paint clone written in JavaScript, designed for e-ink.
 
