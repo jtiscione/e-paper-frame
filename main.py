@@ -9,73 +9,182 @@ import rp2
 import gc
 import binascii
 import re
+import random
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
-rp2.country("US")
-
-ssid = ''
-psk = ''
-
-# Looks in a file wpa_supplicant.conf for two lines of the form
-#
-#        ssid="My_Network_SSID"
-#        psk="Password123"
-#
-try:
-    with open('./wpa_supplicant.conf', 'r') as wpa:
-        lines = wpa.read()
-        ssid_match = re.search("ssid\s*=\s*\"(\w+)\"", lines)
-        if ssid_match is not None:
-            ssid = ssid_match.group(1)
-        psk_match = re.search("psk\s*=\s*\"(\w+)\"", lines)
-        if psk_match:
-            psk = psk_match.group(1)
+# This method handles all the details for getting a wifi connection even if we
+# don't know the SSID / password and have to display messages to the user
+def get_wifi_connection():
         
-except OSError: # open failed
-    print('No wpa_supplicant.conf file.')
+    led = machine.Pin("LED", machine.Pin.OUT)
+    # First check for a stored wifi configuration file  
+    ssid = ''
+    psk = ''
+    wlan = None
+    try:
+        with open('./wifi.conf', 'r') as wpa:
+            lines = wpa.read()
+            ssid_match = re.search("ssid\s*=\s*\"?(\w+)\"?", lines)
+            if ssid_match is not None:
+                ssid = ssid_match.group(1)
+            psk_match = re.search("psk\s*=\s*\"?(\w+)\"?", lines)
+            if psk_match:
+                psk = psk_match.group(1)
+            
+    except OSError: # open failed
+        print('No wifi.conf file.')
 
-if (ssid == '' or psk == ''):
-    print('No SSID credentials.')
-    raise SystemExit
+    if (ssid == '' or psk == ''):
+        print('No SSID credentials found stored in Flash.')
+    else:
+        print("Network SSID", ssid)
 
-print("Network SSID", ssid)
+        wlan = network.WLAN(network.STA_IF)
+        wlan.active(True)
+        wlan.connect(ssid, psk)
 
-with open('./device.txt', 'r') as device_txt:
-    device_lines = device_txt.read()
-    for line in device_lines.split("\n"):
-        stripped = line.strip()
-        if len(stripped) > 0 and stripped.startswith("#") is False:
-            comment_pos = stripped.find("#")
-            nocomment = stripped if comment_pos == -1 else stripped[0: comment_pos].strip()
-            if len(nocomment) > 0:
-                device = nocomment
-                break
+        while not wlan.isconnected() and wlan.status() >= 0:
+            print("Waiting to connect to network", ssid)
+            led.off()
+            time.sleep(0.5)
+            led.on()
+            time.sleep(0.5)
+        if wlan.isconnected():
+            led.off()
+            ifconfig = wlan.ifconfig()
+            print('Connected, status', wlan.status())
+            print('status', wlan.status())
+            print('wlan', wlan)
+
+            ifconfig = wlan.ifconfig()
+            print('ifconfig', ifconfig)
+
+            addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+
+            s = socket.socket()
+            s.settimeout(1) # 1 second
+            s.bind(addr)
+            s.listen(1)
+
+            print(f'Listening on {ifconfig[0]}')
+            return s # Success, return socket
+        else:
+            print('Connection failed, status', wlan.status())
+            wlan.active(False)
+            wlan.deinit()
+    # Well crap...
+    
+    # "BOOTSTRAP" MODE- OPEN A WIRELESS ACCESS POINT like we're setting up a new TV
+    ap = network.WLAN(network.AP_IF)
+
+    ap_ssid = 'epaper' + str(random.randint(100,999))
+    ap_psk = 'inky' + str(random.randint(1000, 9999))
+                         
+    ap.config(essid=ap_ssid, password=ap_psk)
+    ap.active(True)
+    
+    while not ap.active:
+        pass
+    
+    ifconfig = ap.ifconfig()
+    # print('ifconfig', ifconfig)
+    print(f'Network SSID: {ap_ssid}  Password: {ap_psk}  URL: http://{ifconfig[0]}/')
+
+    addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(120)
+    s.bind(addr)
+    s.listen(1)
+    while True:
+        try:
+            cl, addr = s.accept()
+            try:
+                print('Client connected from', addr)
+                request = cl.recv(2048)
+                request_text = request.decode('ascii')
+                print(request_text)
+                if request_text.startswith("POST /wifi"):
+                    ssid_match = re.search("ssid=(\w+)", request_text)
+                    if ssid_match is not None:
+                        ssid = ssid_match.group(1)
+                    psk_match = re.search("psk=(\w+)", request_text)
+                    if psk_match is not None:
+                        psk = psk_match.group(1)
+                    print('ssid', ssid)
+                    print('psk', psk)
+                    with open('./wifi.conf', 'w') as conf_file:
+                        conf_file.write(f'ssid="{ssid}"\npsk="{psk}"')
+                    cl.send(f"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body>SUCCESS. Power cycle the device to have it connect to {ssid}.</body></html>")
+                    cl.close()
+                    s.close()
+                    raise SystemExit
+                    break
+                if request_text.startswith("POST /skip"):
+                    cl.send('HTTP/1.1 303 See Other\r\nLocation: /index.html')
+                    cl.close()
+                    return s
+                
+                if request_text.startswith('GET '):
+                    cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
+                    content = f"""
+                        <html>
+                            <body style="text-align:center">
+                                <h1>E-Paper Frame</h1>
+                                <h2>WIFI NETWORK SETUP</h2>
+                                <form action="/wifi" method="POST">
+                                  <label for="ssid">Network SSID:</label><br>
+                                  <input type="text" id="ssid" name="ssid" value="{ssid}"><br>
+                                  <label for="psk">Password:</label><br>
+                                  <input type="password" id="psk" name="psk" value="{psk}"><br><br>
+                                  <input type="submit" value="Submit">
+                                </form>
+                                <hr/>
+                                <h2>To skip this step and continue with this connection:</h2>
+                                <form action="/skip" method="POST">
+                                    <input type="submit" value="SKIP WIFI SETUP"/>
+                                </form>
+                                <div><em>WARNING: This is extremely slow.</em></div>
+                            </body>
+                        </html>
+                    """
+                    index = 0
+                    while index < len(content):
+                        # print(content[index:index + 800])
+                        index += cl.send(content[index:index + 800])
+                    cl.close()
+            except Exception as e:
+                if e.errno != 110:
+                    print(e)
+                cl.send(f"HTTP/1.0 500 Server error (errno {e.errno})\r\n")
+                cl.close()
+                continue
+        except Exception as e:
+            if e.errno != 110:
+                print(e)
+            continue
+    return wlan
+
+
+# Figure out what device we're using
+device = 'EPD_5in65' # Let's assume we're using the 7 color display by default...
+try:
+    with open('./device.txt', 'r') as device_txt:
+        device_lines = device_txt.read()
+        for line in device_lines.split("\n"):
+            stripped = line.strip()
+            if len(stripped) > 0 and stripped.startswith("#") is False:
+                comment_pos = stripped.find("#")
+                nocomment = stripped if comment_pos == -1 else stripped[0: comment_pos].strip()
+                if len(nocomment) > 0:
+                    device = nocomment
+                    break
+except:
+    print('Could not find/parse device.txt.')
 
 print('device', device)
 
 led = machine.Pin("LED", machine.Pin.OUT)
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-wlan.connect(ssid, psk)
-
-while not wlan.isconnected() and wlan.status() >= 0:
-    print("Waiting to connect.")
-    led.on()
-    time.sleep(0.5)
-    led.off()
-    time.sleep(0.5)
-led.off()
-ifconfig = wlan.ifconfig()
-
-addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-
-s = socket.socket()
-s.settimeout(1) # 1 second
-s.bind(addr)
-s.listen(1)
-
-print(f'Listening on {ifconfig[0]}')
-mem_info()
 
 epd = None
 if device == 'EPD_2in9_B':
@@ -84,6 +193,13 @@ if device == 'EPD_3in7':
     epd = EPD_3in7()
 if device == 'EPD_5in65':
     epd = EPD_5in65()
+
+
+rp2.country("US")
+
+s = get_wifi_connection()
+
+mem_info()
 
 incoming_buffer = bytearray(24576)
 
@@ -119,6 +235,7 @@ while True:
             buffer_index = 0
             chunk_length = 0
 
+            print('Reading buffer')
             while True:
                 try:
                     chunk_length = cl.readinto(buffer[buffer_index: buffer_index + 1], 1)

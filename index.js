@@ -841,7 +841,7 @@ window.onload = function() {
                 const nocomment = line.indexOf('#') === -1 ? line : line.substring(0, line.indexOf("#"));
                 main(nocomment.trim());
             } else {
-                main('');
+                main(xhr.status === 404 ? 'EPD_5in65' : ''); // Pico reports no device.txt file; default to EPD_5in65
             }
         }
     };
