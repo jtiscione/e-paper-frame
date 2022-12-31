@@ -58,11 +58,10 @@ The following files must be present in the Pico W filesystem:
 - `device.txt` (specifying one of the codes above)
 - `main.py`
 - `epd.py` (must be present in subfolder `lib`)
-- `wpa_supplicant.conf` (not part of repository)
+- `wifi.conf` (not part of repository)
 
-The `wpa_supplicant.conf` file is read to get the wireless configuration.
-It doesn't need to be a "real" `wpa_supplicant.conf` file, although one will work;
-it just needs to contain two lines of the form:
+The `wifi.conf` file is read to get the wireless configuration.
+It needs to contain two lines of the form:
 ```
 ssid="My-Wireless-Network"
 psk="Password123"
