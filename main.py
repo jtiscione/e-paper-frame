@@ -10,12 +10,13 @@ import gc
 import binascii
 import re
 import random
+import framebuf # For displaying status text messages
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
 # This method handles all the details for getting a wifi connection even if we
 # don't know the SSID / password and have to display messages to the user
-def get_wifi_connection():
-        
+def get_wifi_connection(displayLines):
+
     led = machine.Pin("LED", machine.Pin.OUT)
     # First check for a stored wifi configuration file  
     ssid = ''
@@ -65,8 +66,25 @@ def get_wifi_connection():
             s.settimeout(1) # 1 second
             s.bind(addr)
             s.listen(1)
-
-            print(f'Listening on {ifconfig[0]}')
+            
+            ip = str(ifconfig[0])
+            # If this is a new IP, display it to the user
+            novel_ip = True
+            try:
+                with open('.lastip', 'r') as ipfile:
+                    if ipfile.read() == ip:
+                        novel_ip = False
+            except:
+                pass
+            
+            if novel_ip:
+                try:
+                    with open('.lastip', 'w') as ipfile:
+                        ipfile.write(ip)
+                except:
+                    pass
+                displayLines('LOCAL IP:', str(ifconfig[0]))
+            
             return s # Success, return socket
         else:
             print('Connection failed, status', wlan.status())
@@ -79,7 +97,7 @@ def get_wifi_connection():
 
     ap_ssid = 'epaper' + str(random.randint(100,999))
     ap_psk = 'inky' + str(random.randint(1000, 9999))
-                         
+
     ap.config(essid=ap_ssid, password=ap_psk)
     ap.active(True)
     
@@ -88,7 +106,8 @@ def get_wifi_connection():
     
     ifconfig = ap.ifconfig()
     # print('ifconfig', ifconfig)
-    print(f'Network SSID: {ap_ssid}  Password: {ap_psk}  URL: http://{ifconfig[0]}/')
+    print(f'Network SSID: {ap_ssid}  Password: {ap_psk}  URL: http://{ifconfig[0]}')
+    displayLines('Network SSID:', ap_ssid, '', 'Password:', ap_psk, '', 'Local IP:', str(ifconfig[0]))
 
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
@@ -197,7 +216,16 @@ if device == 'EPD_5in65':
 
 rp2.country("US")
 
-s = get_wifi_connection()
+def displayLines(*args):
+    epd.init()
+    # epd.clear()
+    epd.displayMessage(*args)
+    print('Returned from displayMessage')
+    epd.delay_ms(2000)
+    epd.sleep()
+    print('Returned from sleep()')
+
+s = get_wifi_connection(displayLines)
 
 mem_info()
 

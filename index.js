@@ -566,7 +566,7 @@ main = function(device_txt) {
             }
         }
         if (block === buffers.length) {
-            updateUploadStatus('SUCCESS. Display may be busy for up to 15 seconds.');
+            updateUploadStatus('SUCCESS.');
         } else if (appMode !== APP_MODES.UPLOAD_OPERATION) {
             updateUploadStatus("Canceled.");
         } else {

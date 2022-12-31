@@ -1,4 +1,6 @@
 from machine import Pin, SPI
+import framebuf
+import gc
 import utime
 
 RST_PIN         = 12
@@ -69,7 +71,7 @@ class EPD:
     def display(self, image):
         pass
     
-    def displayMessage(self, message):
+    def displayMessage(self, *args):
         pass
 
     def sleep(self):
@@ -132,18 +134,41 @@ class EPD_2in9_B(EPD):
     def display(self):
         self.send_command(0x10)
         for j in range(0, self.height):
-            for i in range(0, int(self.width / 8)):
-                self.send_data(self.buffer_black[i + j * int(self.width / 8)])
+            for i in range(0, int(self.width // 8)):
+                self.send_data(self.buffer_black[i + j * int(self.width // 8)])
         self.send_command(0x13)
         for j in range(0, self.height):
             for i in range(0, int(self.width / 8)):
-                self.send_data(self.buffer_red[i + j * int(self.width / 8)])
+                self.send_data(self.buffer_red[i + j * int(self.width // 8)])
 
         self.TurnOnDisplay()
     
         
-    def displayMessage(self, message):
-        pass
+    def displayMessage(self, *args):
+        # Create a small framebuffer to display several lines of text
+        textBufferHeight = 12 * (1 + len(args))
+        textBufferByteArray = bytearray(textBufferHeight * self.width // 8)
+        image = framebuf.FrameBuffer(textBufferByteArray, self.width, textBufferHeight, framebuf.MONO_HLSB)
+        image.fill(0xff)
+        for h in range(0, len(args)):
+            image.text(str(args[h]), 5, 12 * (1 + h), 0x00)
+
+        self.send_command(0x10)
+        for j in range(0, textBufferHeight):
+            for i in range(0, int(self.width // 8)):
+                self.send_data(textBufferByteArray[i + j * int(self.width // 8)])
+        image = None
+        textBufferByteArray = None
+        gc.collect()
+        for j in range(textBufferHeight, self.height):
+            for i in range(0, int(self.width // 8)):
+                self.send_data(0xff)
+        self.send_command(0x13)
+        for j in range(0, self.height):
+            for i in range(0, int(self.width // 8)):
+                self.send_data(0xff)
+        self.TurnOnDisplay()
+        print('displayMessage() complete.')
 
     def sleep(self):
         self.send_command(0X02) # power off
@@ -493,7 +518,7 @@ class EPD_3in7(EPD):
 
         self.ReadBusy()
         
-    def displayMessage(self, message):
+    def displayMessage(self, *args):
         pass
 
     def sleep(self):
@@ -665,7 +690,7 @@ class EPD_5in65(EPD):
         self.BusyLow()
         self.delay_ms(200)
         
-    def displayMessage(self, message):
+    def displayMessage(self, *args):
         pass
 
     def sleep(self):
