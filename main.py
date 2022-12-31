@@ -13,17 +13,17 @@ import random
 import framebuf # For displaying status text messages
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
-# This method handles all the details for getting a wifi connection even if we
+# This method handles all the details for getting a wireless connection even if we
 # don't know the SSID / password and have to display messages to the user
-def get_wifi_connection(displayLines):
+def get_wi_fi_connection(displayLines):
 
     led = machine.Pin("LED", machine.Pin.OUT)
-    # First check for a stored wifi configuration file  
+    # First check for a stored wireless configuration file  
     ssid = ''
     psk = ''
     wlan = None
     try:
-        with open('./wifi.conf', 'r') as wpa:
+        with open('./wi-fi.conf', 'r') as wpa:
             lines = wpa.read()
             ssid_match = re.search("ssid\s*=\s*\"?(\w+)\"?", lines)
             if ssid_match is not None:
@@ -33,7 +33,7 @@ def get_wifi_connection(displayLines):
                 psk = psk_match.group(1)
             
     except OSError: # open failed
-        print('No wifi.conf file.')
+        print('No wi-fi.conf file.')
 
     if (ssid == '' or psk == ''):
         print('No SSID credentials found stored in Flash.')
@@ -71,7 +71,7 @@ def get_wifi_connection(displayLines):
             # If this is a new IP, display it to the user
             novel_ip = True
             try:
-                with open('.lastip', 'r') as ipfile:
+                with open('last-ip.txt', 'r') as ipfile:
                     if ipfile.read() == ip:
                         novel_ip = False
             except:
@@ -79,7 +79,7 @@ def get_wifi_connection(displayLines):
             
             if novel_ip:
                 try:
-                    with open('.lastip', 'w') as ipfile:
+                    with open('last-ip.txt', 'w') as ipfile:
                         ipfile.write(ip)
                 except:
                     pass
@@ -132,7 +132,7 @@ def get_wifi_connection(displayLines):
                         psk = psk_match.group(1)
                     print('ssid', ssid)
                     print('psk', psk)
-                    with open('./wifi.conf', 'w') as conf_file:
+                    with open('./wi-fi.conf', 'w') as conf_file:
                         conf_file.write(f'ssid="{ssid}"\npsk="{psk}"')
                     cl.send(f"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body>SUCCESS. Power cycle the device to have it connect to {ssid}.</body></html>")
                     cl.close()
@@ -150,7 +150,7 @@ def get_wifi_connection(displayLines):
                         <html>
                             <body style="text-align:center">
                                 <h1>E-Paper Frame</h1>
-                                <h2>WIFI NETWORK SETUP</h2>
+                                <h2>WIRELESS NETWORK SETUP</h2>
                                 <form action="/wifi" method="POST">
                                   <label for="ssid">Network SSID:</label><br>
                                   <input type="text" id="ssid" name="ssid" value="{ssid}"><br>
@@ -159,11 +159,11 @@ def get_wifi_connection(displayLines):
                                   <input type="submit" value="Submit">
                                 </form>
                                 <hr/>
-                                <h2>To skip this step and continue with this connection:</h2>
+                                <h2>No wireless network? To skip this step and continue using this connection:</h2>
                                 <form action="/skip" method="POST">
-                                    <input type="submit" value="SKIP WIFI SETUP"/>
+                                    <input type="submit" value="SKIP WI-FI SETUP"/>
                                 </form>
-                                <div><em>WARNING: This is extremely slow.</em></div>
+                                <div><em>WARNING: The connection is extremely slow.</em></div>
                             </body>
                         </html>
                     """
@@ -225,7 +225,7 @@ def displayLines(*args):
     epd.sleep()
     print('Returned from sleep()')
 
-s = get_wifi_connection(displayLines)
+s = get_wi_fi_connection(displayLines)
 
 mem_info()
 
