@@ -217,8 +217,6 @@ if device == 'EPD_5in65':
 rp2.country("US")
 
 def displayLines(*args):
-    epd.init()
-    # epd.clear()
     epd.displayMessage(*args)
     print('Returned from displayMessage')
     epd.delay_ms(2000)

@@ -62,7 +62,7 @@ class EPD:
         self.spi_writebyte([data])
         self.digital_write(self.cs_pin, 1)
 
-    def init(self):
+    def init(self, *args):
         pass
 
     def clear(self):
@@ -98,7 +98,7 @@ class EPD_2in9_B(EPD):
         self.send_command(0x12)
         self.ReadBusy()
 
-    def init(self):
+    def init(self, *args):
         self.reset()
         self.send_command(0x04)
         self.ReadBusy()#waiting for the electronic paper IC to release the idle signal
@@ -131,6 +131,7 @@ class EPD_2in9_B(EPD):
 
         self.TurnOnDisplay()
 
+    # Here for reference, not actually used
     def display(self):
         self.send_command(0x10)
         for j in range(0, self.height):
@@ -145,25 +146,31 @@ class EPD_2in9_B(EPD):
     
         
     def displayMessage(self, *args):
+
+        self.init()
         # Create a small framebuffer to display several lines of text
         textBufferHeight = 12 * (1 + len(args))
-        textBufferByteArray = bytearray(textBufferHeight * self.width // 8)
-        image = framebuf.FrameBuffer(textBufferByteArray, self.width, textBufferHeight, framebuf.MONO_HLSB)
+        textBufferWidth = self.width # Buffer extends entire width
+        textBufferByteArray = bytearray(textBufferHeight * textBufferWidth // 8)
+        image = framebuf.FrameBuffer(textBufferByteArray, textBufferWidth, textBufferHeight, framebuf.MONO_HLSB)
         image.fill(0xff)
         for h in range(0, len(args)):
             image.text(str(args[h]), 5, 12 * (1 + h), 0x00)
 
         self.send_command(0x10)
+        # Top of black image
         for j in range(0, textBufferHeight):
-            for i in range(0, int(self.width // 8)):
-                self.send_data(textBufferByteArray[i + j * int(self.width // 8)])
+            for i in range(0, int(textBufferWidth // 8)):
+                self.send_data(textBufferByteArray[i + j * int(textBufferWidth // 8)])
         image = None
         textBufferByteArray = None
         gc.collect()
+        # Rest of black image
         for j in range(textBufferHeight, self.height):
             for i in range(0, int(self.width // 8)):
                 self.send_data(0xff)
         self.send_command(0x13)
+        # Red image is blank
         for j in range(0, self.height):
             for i in range(0, int(self.width // 8)):
                 self.send_data(0xff)
@@ -305,7 +312,12 @@ class EPD_3in7(EPD):
             else:
                 print("There is no such lut ")
 
-    def init(self):
+    def init(self, *args):
+
+        monochrome = False
+        if len(args) > 0:
+            monochrome = args[0]
+
         self.reset()              # SWRESET
 
         self.send_command(0x12)
@@ -351,16 +363,19 @@ class EPD_3in7(EPD):
         self.send_data(0x44)
 
         self.send_command(0x37)   # set display option, these setting turn on previous function
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
-        self.send_data(0x00)
+        switch_byte = 0x00
+        if monochrome:
+            switch_byte = 0xFF
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
+        self.send_data(switch_byte)
 
         self.send_command(0x44)   # setting X direction start/end position of RAM
         self.send_data(0x00)
@@ -418,6 +433,7 @@ class EPD_3in7(EPD):
         self.send_command(0x20)
         self.ReadBusy()
 
+    # Here for reference, not actually used
     def display(self, Image):
         self.send_command(0x49)
         self.send_data(0x00)
@@ -519,7 +535,41 @@ class EPD_3in7(EPD):
         self.ReadBusy()
         
     def displayMessage(self, *args):
-        pass
+        # Can use simpler black/white mode for this
+        self.init(True) # True black/white color mode, False for 4 colors
+
+        # Create a small framebuffer to display several lines of text
+        textBufferHeight = 12 * (1 + len(args))
+        textBufferWidth = 128 # Enough pixels to fit text
+        textBufferByteArray = bytearray(textBufferHeight * textBufferWidth // 8)
+        image = framebuf.FrameBuffer(textBufferByteArray, textBufferWidth, textBufferHeight, framebuf.MONO_HLSB)
+        image.fill(0xff)
+        for h in range(0, len(args)):
+            image.text(str(args[h]), 5, 12 * (1 + h), 0x00)
+
+        # For partial updates, these 2 lines get replaced
+        self.send_command(0x49)
+        self.send_data(0x00)
+
+        self.send_command(0x4E)
+        self.send_data(0x00)
+        self.send_data(0x00)
+        self.send_command(0x4F)
+        self.send_data(0x00)
+        self.send_data(0x00)
+
+        self.send_command(0x24)
+        for j in range(0, self.height):
+            for i in range(0, int(self.width // 8)):
+                if i < int(textBufferWidth // 8) and j < int(textBufferHeight // 8):
+                    self.send_data(Image[i + j * wide])
+                else:
+                    self.send_data(0xff)
+
+        self.Load_LUT(1)
+
+        self.send_command(0x20)
+        self.ReadBusy()
 
     def sleep(self):
         self.send_command(0X50)
@@ -610,7 +660,7 @@ class EPD_5in65(EPD):
         while(self.digital_read(self.busy_pin) == 1):
             self.delay_ms(1)
 
-    def init(self):
+    def init(self, *args):
         self.reset()
         self.BusyHigh()
         self.send_command(0x00)
@@ -670,6 +720,7 @@ class EPD_5in65(EPD):
         self.BusyLow()
         self.delay_ms(500)
 
+    # For reference, not used
     def display(self, image):
 
         self.send_command(0x61)   # Set Resolution setting
