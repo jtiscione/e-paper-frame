@@ -561,8 +561,8 @@ class EPD_3in7(EPD):
         self.send_command(0x24)
         for j in range(0, self.height):
             for i in range(0, int(self.width // 8)):
-                if i < int(textBufferWidth // 8) and j < int(textBufferHeight // 8):
-                    self.send_data(Image[i + j * wide])
+                if i < int(textBufferWidth // 8) and j < int(textBufferHeight):
+                    self.send_data(textBufferByteArray[i + j * int(textBufferWidth // 8)])
                 else:
                     self.send_data(0xff)
 
