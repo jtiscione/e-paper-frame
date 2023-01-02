@@ -13,6 +13,8 @@ import random
 import framebuf # For displaying status text messages
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
 
+rp2.country("US") # This one line setting the country code is RP2040-specific
+
 # This method handles all the details for getting a wireless connection even if we
 # don't know the SSID / password and have to display messages to the user
 def get_wi_fi_connection(displayLines):
@@ -212,9 +214,6 @@ if device == 'EPD_3in7':
     epd = EPD_3in7()
 if device == 'EPD_5in65':
     epd = EPD_5in65()
-
-
-rp2.country("US")
 
 def displayLines(*args):
     epd.displayMessage(*args)

@@ -742,7 +742,47 @@ class EPD_5in65(EPD):
         self.delay_ms(200)
         
     def displayMessage(self, *args):
-        pass
+        print('In displayMessage()...')
+        # Create a small framebuffer to display several lines of text in top left corner
+        textBufferHeight = 12 * (1 + len(args))
+        textBufferWidth = 128 # Just use width of narrowest display for this
+        halfBufferWidth = textBufferWidth // 2
+        textBufferByteArray = bytearray(textBufferHeight * halfBufferWidth)
+        image = framebuf.FrameBuffer(textBufferByteArray, textBufferWidth, textBufferHeight, framebuf.GS4_HMSB)
+        image.fill(0x11) # two white pixels
+        for h in range(0, len(args)):
+            image.text(str(args[h]), 5, 12 * (1 + h), 0x00)  # two black pixels
+        self.init()
+        self.send_command(0x61)   # Set Resolution setting
+        self.send_data(0x02)
+        self.send_data(0x58)
+        self.send_data(0x01)
+        self.send_data(0xC0)
+        self.send_command(0x10)
+        print('Sending pixel data...')
+        for i in range(0, textBufferHeight): # self.height):
+            row_byte_offset = i * halfBufferWidth
+            for j in range(0, int(self.width // 2)):
+                # if xstart, ystart not both zero:
+                # if((i < (textBufferHeight + ystart)) and (i >= ystart ) and (j < halfBufferWidth + (xstart // 2) and (j >= ( xstart //2 ))):
+                #     self.send_data(textBufferByteArray[(j - xstart // 2) + (i - ystart) * halfBufferWidth])
+                # else:
+                #   self.send_data(0x11)
+                if (i < textBufferHeight) and (j < halfBufferWidth):
+                    self.send_data(textBufferByteArray[j + row_byte_offset])
+                else:
+                    self.send_data(0x77) # Two "clean" pixels
+
+        print('Finished sending pixel data.')
+        self.send_command(0x04)   # 0x04
+        self.BusyHigh()
+        self.send_command(0x12)   # 0x12
+        self.BusyHigh()
+        self.send_command(0x02)   # 0x02
+        self.BusyLow()
+        print('Complete.')
+        self.delay_ms(200)
+        print('Returning from displayMessage().')
 
     def sleep(self):
         self.delay_ms(100)
