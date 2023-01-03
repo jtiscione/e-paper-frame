@@ -23,6 +23,7 @@ class EPD:
         self.dc_pin = Pin(DC_PIN, Pin.OUT)
 
         self.data_block_count = 0
+        self.expected_block_count = 0
 
         # self.init()
 
@@ -49,6 +50,8 @@ class EPD:
         self.delay_ms(2)
         self.digital_write(self.reset_pin, 1)
         self.delay_ms(50)
+        # Also do this
+        self.data_block_count = 0
 
     def send_command(self, command):
         self.digital_write(self.dc_pin, 0)
@@ -60,6 +63,12 @@ class EPD:
         self.digital_write(self.dc_pin, 1)
         self.digital_write(self.cs_pin, 0)
         self.spi_writebyte([data])
+        self.digital_write(self.cs_pin, 1)
+
+    def send_data_array(self, data):
+        self.digital_write(self.dc_pin, 1)
+        self.digital_write(self.cs_pin, 0)
+        self.spi_writebyte(data)
         self.digital_write(self.cs_pin, 1)
 
     def init(self, *args):
@@ -85,6 +94,7 @@ class EPD_2in9_B(EPD):
 
     def __init__(self):
         super().__init__(128, 296)
+        self.expected_block_count = 2
 
     def ReadBusy(self):
         print('busy')
@@ -275,6 +285,7 @@ class EPD_3in7(EPD):
     def __init__(self):
 
         super().__init__(280, 480)
+        self.expected_block_count = 2
 
         self.lut_4Gray_GC = EPD_3IN7_lut_4Gray_GC
         self.lut_1Gray_GC = EPD_3IN7_lut_1Gray_GC
@@ -643,6 +654,7 @@ class EPD_5in65(EPD):
 
     def __init__(self):
         super().__init__(600, 448)
+        self.expected_block_count = 8
         self.Black = 0x00
         self.White = 0x01
         self.Green = 0x02
@@ -708,10 +720,10 @@ class EPD_5in65(EPD):
         self.send_data(0x01)
         self.send_data(0xC0)
         self.send_command(0x10)
-        for i in range(0,int(self.width / 2)):
-            for j in range(0, self.height):
-                self.send_data((color<<4)|color)
-
+        color2 = (color<<4)|color
+        blanks = [color2 for e in range(0, int(self.width // 2))]
+        for j in range(0, self.height):
+            self.send_data_array(blanks)
         self.send_command(0x04)   # 0x04
         self.BusyHigh()
         self.send_command(0x12)   # 0x12
@@ -740,7 +752,7 @@ class EPD_5in65(EPD):
         self.send_command(0x02)   # 0x02
         self.BusyLow()
         self.delay_ms(200)
-        
+
     def displayMessage(self, *args):
         print('In displayMessage()...')
         # Create a small framebuffer to display several lines of text in top left corner
@@ -749,7 +761,7 @@ class EPD_5in65(EPD):
         halfBufferWidth = textBufferWidth // 2
         textBufferByteArray = bytearray(textBufferHeight * halfBufferWidth)
         image = framebuf.FrameBuffer(textBufferByteArray, textBufferWidth, textBufferHeight, framebuf.GS4_HMSB)
-        image.fill(0x11) # two white pixels
+        image.fill(0x77) # two "clean" pixels
         for h in range(0, len(args)):
             image.text(str(args[h]), 5, 12 * (1 + h), 0x00)  # two black pixels
         self.init()
@@ -760,18 +772,14 @@ class EPD_5in65(EPD):
         self.send_data(0xC0)
         self.send_command(0x10)
         print('Sending pixel data...')
+        partial_blanks = [0x77 for e in range(0, int(self.width // 2 - halfBufferWidth))]
         for i in range(0, textBufferHeight): # self.height):
             row_byte_offset = i * halfBufferWidth
-            for j in range(0, int(self.width // 2)):
-                # if xstart, ystart not both zero:
-                # if((i < (textBufferHeight + ystart)) and (i >= ystart ) and (j < halfBufferWidth + (xstart // 2) and (j >= ( xstart //2 ))):
-                #     self.send_data(textBufferByteArray[(j - xstart // 2) + (i - ystart) * halfBufferWidth])
-                # else:
-                #   self.send_data(0x11)
-                if (i < textBufferHeight) and (j < halfBufferWidth):
-                    self.send_data(textBufferByteArray[j + row_byte_offset])
-                else:
-                    self.send_data(0x77) # Two "clean" pixels
+            self.send_data_array(textBufferByteArray[row_byte_offset : row_byte_offset + halfBufferWidth])
+            self.send_data_array(partial_blanks)
+        full_blanks = [0x77 for e in range(0, int(self.width // 2))]
+        for i in range(textBufferHeight, self.height):
+            self.send_data_array(full_blanks)
 
         print('Finished sending pixel data.')
         self.send_command(0x04)   # 0x04
@@ -794,6 +802,7 @@ class EPD_5in65(EPD):
     # Will receive 8 POST requests, each with a block of 22400 base64 characters encoding 16800 bytes each.
     # Each block is a horizontal stripe of 56 rows of 448 pixels with each pixel occupying half a byte.
     def process_data_block(self, data, block_number, send_response):
+        print(f'block_number {block_number}   self.data_block_count {self.data_block_count}')
         print('process_data_block() data length', len(data))
         if (block_number == 0):
             self.init()
@@ -812,9 +821,8 @@ class EPD_5in65(EPD):
 
         index = 0
         for i in range(0, self.height / 8):
-            for j in range(0, int(self.width // 2)):
-                self.send_data(data[index]) # j+(int(self.width // 2)*i)
-                index += 1
+            self.send_data_array(data[index : index + int(self.width // 2)])
+            index += int(self.width // 2)
 
         send_response(200, 'OK')
 

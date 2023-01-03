@@ -836,10 +836,16 @@ window.onload = function() {
         if (xhr.readyState === 4) {
             // Request finished
             if (xhr.status === 200 && xhr.responseText) {
-                const lines = xhr.responseText.split('\n').filter((e) => e.trim() && !e.trim().startsWith("#"));
-                const line = lines.length ? lines[0] : '';
-                const nocomment = line.indexOf('#') === -1 ? line : line.substring(0, line.indexOf("#"));
-                main(nocomment.trim());
+                const lines = xhr.responseText.split('\n');
+                let device = '';
+                lines.forEach((line) => {
+                    const hashpos = line.indexOf('#');
+                    const match = (hashpos === -1 ? line : line.substring(0, hashpos)).match(/device\s*=\s*\"?(\w+)\"?/);
+                    if (match) {
+                        device = match[1];
+                    }
+                });
+                main(device);
             } else {
                 main(xhr.status === 404 ? 'EPD_5in65' : ''); // Pico reports no device.txt file; default to EPD_5in65
             }
