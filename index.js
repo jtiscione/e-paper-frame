@@ -840,7 +840,7 @@ window.onload = function() {
                 let device = '';
                 lines.forEach((line) => {
                     const hashpos = line.indexOf('#');
-                    const match = (hashpos === -1 ? line : line.substring(0, hashpos)).match(/device\s*=\s*\"?(\w+)\"?/);
+                    const match = (hashpos === -1 ? line : line.substring(0, hashpos)).match(/device\s*=\s*"?(\w+)"?/);
                     if (match) {
                         device = match[1];
                     }
