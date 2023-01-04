@@ -1,5 +1,6 @@
 from micropython import mem_info
 from machine import Pin
+import os
 import network
 import socket
 import time
@@ -52,19 +53,21 @@ if device == 'EPD_5in65':
 # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
 # The 7.5 inch display has three buttons connected via pull-up resistors to GPIO 2, GPIO 3, and the RUN pin.
 
-# Special function of button_0: if it's being pressed on startup, delete any cached connection info
-# so that we start up in inital setup mode. Otherwise it will try to connect and you have to wait for it to fail.
+# Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
 if button_0 is not None and button_0.value() == 0:
     try:
         print('Removing last-ip.txt.')
-        os.remove('last-ip.txt')
-    except:
+        os.remove('./last-ip.txt')
+    except Exception as e:
+        print(e)
         pass
     try:
         print('Removing wi-fi.conf.')
-        os.remove('wi-fi.conf')
-    except:
+        os.remove('./wi-fi.conf')
+    except Exception as e:
         pass
+    print('Exiting.')
+    raise SystemExit
 
 # These flags will be checked after every socket timeout while we're waiting for a connection
 button_flag_0 = False
@@ -152,7 +155,7 @@ def get_wi_fi_connection(displayLines):
             # If this is a new IP, display it to the user
             novel_ip = True
             try:
-                with open('last-ip.txt', 'r') as ipfile:
+                with open('./last-ip.txt', 'r') as ipfile:
                     if ipfile.read() == ip:
                         novel_ip = False
             except:
@@ -160,7 +163,7 @@ def get_wi_fi_connection(displayLines):
             
             if novel_ip:
                 try:
-                    with open('last-ip.txt', 'w') as ipfile:
+                    with open('./last-ip.txt', 'w') as ipfile:
                         ipfile.write(ip)
                 except:
                     pass
@@ -213,7 +216,12 @@ def get_wi_fi_connection(displayLines):
                     print('psk', psk)
                     with open('./wi-fi.conf', 'w') as conf_file:
                         conf_file.write(f'ssid="{ssid}"\npsk="{psk}"')
-                    cl.send(f"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body>SUCCESS. Power cycle the device to have it connect to {ssid}.</body></html>")
+                    cl.send(f"""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n
+                        <html>
+                            <body style='font-family: "American Typewriter", serif;text-align:center'>
+                                SUCCESS. Power cycle the device to have it connect to {ssid}.
+                            </body>
+                        </html>""")
                     cl.close()
                     s.close()
                     raise SystemExit
@@ -227,7 +235,7 @@ def get_wi_fi_connection(displayLines):
                     cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
                     content = f"""
                         <html>
-                            <body style="text-align:center">
+                            <body style='font-family: "American Typewriter", serif;text-align:center'>
                                 <h1>E-Paper Frame</h1>
                                 <h2>WIRELESS NETWORK SETUP</h2>
                                 <form action="/wifi" method="POST">
@@ -272,8 +280,6 @@ elif device == 'EPD_3in7':
     epd = EPD_3in7()
 elif device == 'EPD_5in65':
     epd = EPD_5in65()
-
-# print('expected_block_count', expected_block_count)
 
 def displayLines(*args):
     epd.displayMessage(*args)
@@ -410,7 +416,8 @@ while True:
                             print('Successfully loaded content', uri)
                         else:
                             cl.send('HTTP/1.0 400 Bad Request\r\n')
-                    except:
+                    except Exception as e:
+                        print(e)
                         cl.send('HTTP/1.0 404 Not Found\r\n')
                 else:
                     cl.send('HTTP/1.0 403 Forbidden\r\n')
@@ -455,7 +462,7 @@ while True:
                         print("Detected button 0")
                         ip = 'UNKNOWN'
                         try:
-                            with open('last-ip.txt', 'r') as ipfile: # TODO - get this from the socket instead (WLAN not in scope)
+                            with open('./last-ip.txt', 'r') as ipfile: # TODO - get this from the socket instead (WLAN not in scope)
                                 ip = ipfile.read()
                         except:
                             pass                    

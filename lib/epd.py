@@ -757,7 +757,7 @@ class EPD_5in65(EPD):
         print('In displayMessage()...')
         # Create a small framebuffer to display several lines of text in top left corner
         textBufferHeight = 12 * (1 + len(args))
-        textBufferWidth = 128 # Just use width of narrowest display for this
+        textBufferWidth = 300 # Just use left side of screen for this
         halfBufferWidth = textBufferWidth // 2
         textBufferByteArray = bytearray(textBufferHeight * halfBufferWidth)
         image = framebuf.FrameBuffer(textBufferByteArray, textBufferWidth, textBufferHeight, framebuf.GS4_HMSB)
