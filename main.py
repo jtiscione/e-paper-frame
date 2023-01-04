@@ -23,10 +23,12 @@ try:
     with open('./device.txt', 'r') as device_txt:
         device_lines = device_txt.read()
         for line in device_lines.split("\n"):
-            device_match = re.search('device\s*=\s*\"?(\w+)\"?', line)
+            hashpos = line.find('#')
+            uncommented_line = line if hashpos == -1 else line[0: hashpos]
+            device_match = re.search('device\s*=\s*\"?(\w+)\"?', uncommented_line)
             if (device_match is not None):
                 device = device_match.group(1)
-            country_match = re.search('country\s*=\s*\"?(\w\w)\"?', line)
+            country_match = re.search('country\s*=\s*\"?(\w\w)\"?', uncommented_line)
             if (country_match is not None):
                 country = country_match.group(1)
 except:
