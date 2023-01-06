@@ -143,14 +143,13 @@ class EPD_2in9_B(EPD):
 
     # Here for reference, not actually used
     def display(self):
+        byes_width = int(self.width // 8)
         self.send_command(0x10)
         for j in range(0, self.height):
-            for i in range(0, int(self.width // 8)):
-                self.send_data(self.buffer_black[i + j * int(self.width // 8)])
+            self.send_data_array(self.buffer_black[j * bytes_width : (j + 1) * bytes_width])
         self.send_command(0x13)
         for j in range(0, self.height):
-            for i in range(0, int(self.width / 8)):
-                self.send_data(self.buffer_red[i + j * int(self.width // 8)])
+            self.send_data_array(self.buffer_red[j * bytes_width : (j + 1) * bytes_width])
 
         self.TurnOnDisplay()
     
@@ -170,20 +169,18 @@ class EPD_2in9_B(EPD):
         self.send_command(0x10)
         # Top of black image
         for j in range(0, textBufferHeight):
-            for i in range(0, int(textBufferWidth // 8)):
-                self.send_data(textBufferByteArray[i + j * int(textBufferWidth // 8)])
+            self.send_data_array(textBufferByteArray[j * self.width // 8: (j + 1) * self.width // 8])
         image = None
         textBufferByteArray = None
         gc.collect()
         # Rest of black image
+        blanks = [0xff for e in range(0, self.width // 8)]
         for j in range(textBufferHeight, self.height):
-            for i in range(0, int(self.width // 8)):
-                self.send_data(0xff)
+            self.send_data_array(blanks)
         self.send_command(0x13)
         # Red image is blank
         for j in range(0, self.height):
-            for i in range(0, int(self.width // 8)):
-                self.send_data(0xff)
+            self.send_data_array(blanks)
         self.TurnOnDisplay()
         print('displayMessage() complete.')
 
@@ -197,13 +194,15 @@ class EPD_2in9_B(EPD):
         self.module_exit()
 
     def process_data_block(self, data, block_number, send_response):
+        bytes_width = int(self.width // 8)
         if (block_number == 0):
             self.init()
             # black buffer
             self.send_command(0x10)
-            for j in range(0, self.height):
-                for i in range(0, int(self.width // 8)):
-                    self.send_data(data[i + j * int(self.width // 8)])
+            self.send_data_array(data)
+            # for j in range(0, self.height):
+            #   for i in range(0, bytes_width):
+            #     self.send_data(data[i + j * bytes_width])
             send_response(200, 'OK')
             self.data_block_count = 1
         elif (block_number != self.data_block_count):
@@ -213,9 +212,10 @@ class EPD_2in9_B(EPD):
         elif (block_number == 1):
             # red buffer
             self.send_command(0x13)
-            for j in range(0, self.height):
-                for i in range(0, int(self.width // 8)):
-                    self.send_data(data[i + j * int(self.width // 8)])
+            self.send_data_array(data)
+            # for j in range(0, self.height):
+            #   for i in range(0, int(self.width // 8)):
+            #       self.send_data(data[i + j * int(self.width // 8)])
             send_response(200, 'OK')
 
             self.TurnOnDisplay()

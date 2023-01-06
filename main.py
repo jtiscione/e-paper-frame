@@ -220,7 +220,7 @@ def get_wi_fi_connection(displayLines):
                         conf_file.write(f'ssid="{ssid}"\npsk="{psk}"')
                     cl.send(f"""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n
                         <html>
-                            <body style='font-family: "American Typewriter", serif;text-align:center'>
+                            <body style='font-family: "system-ui", serif;text-align:center'>
                                 SUCCESS. Power cycle the device to have it connect to {ssid}.
                             </body>
                         </html>""")
@@ -228,16 +228,12 @@ def get_wi_fi_connection(displayLines):
                     s.close()
                     raise SystemExit
                     break
-                if request_text.startswith("POST /skip"):
-                    cl.send('HTTP/1.1 303 See Other\r\nLocation: /index.html')
-                    cl.close()
-                    return s
                 
                 if request_text.startswith('GET '):
                     cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
                     content = f"""
                         <html>
-                            <body style='font-family: "American Typewriter", serif;text-align:center'>
+                            <body style='font-family: "system-ui", serif;text-align:center'>
                                 <h1>E-Paper Frame</h1>
                                 <h2>WIRELESS NETWORK SETUP</h2>
                                 <form action="/wifi" method="POST">
@@ -247,12 +243,6 @@ def get_wi_fi_connection(displayLines):
                                   <input type="password" id="psk" name="psk" value="{psk}"><br><br>
                                   <input type="submit" value="Submit">
                                 </form>
-                                <hr/>
-                                <h2>No wireless network? To skip this step and continue using this connection:</h2>
-                                <form action="/skip" method="POST">
-                                    <input type="submit" value="SKIP WI-FI SETUP"/>
-                                </form>
-                                <div><em>WARNING: The connection is extremely slow.</em></div>
                             </body>
                         </html>
                     """
