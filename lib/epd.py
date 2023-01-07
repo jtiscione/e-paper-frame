@@ -128,16 +128,18 @@ class EPD_2in9_B(EPD):
         return 0
 
     def clear(self):
-        colorblack = 0xFF
-        colorred = 0xFF
+        blanks = [0xff for e in range(0, self.width // 8)]
+
+        # Clear black
         self.send_command(0x10)
         for j in range(0, self.height):
-            for i in range(0, int(self.width / 8)):
-                self.send_data(colorblack)
+            self.send_data_array(blanks)
+
+        # Clear red
         self.send_command(0x13)
         for j in range(0, self.height):
-            for i in range(0, int(self.width / 8)):
-                self.send_data(colorred)
+            self.send_data_array(blanks)
+        blanks = None
 
         self.TurnOnDisplay()
 
@@ -181,6 +183,7 @@ class EPD_2in9_B(EPD):
         # Red image is blank
         for j in range(0, self.height):
             self.send_data_array(blanks)
+        blanks = None
         self.TurnOnDisplay()
         print('displayMessage() complete.')
 
@@ -420,9 +423,9 @@ class EPD_3in7(EPD):
         self.send_data(0x00)
 
         self.send_command(0x24)
+        blanks = [0xff for e in range(0, wide)]
         for j in range(0, high):
-            for i in range(0, wide):
-                self.send_data(0Xff)
+            self.send_data_array(blanks)
 
         self.send_command(0x4E)
         self.send_data(0x00)
@@ -434,8 +437,8 @@ class EPD_3in7(EPD):
 
         self.send_command(0x26)
         for j in range(0, high):
-            for i in range(0, wide):
-                self.send_data(0Xff)
+            self.send_data_array(blanks)
+        blanks = None
 
         self.Load_LUT(0)
         self.send_command(0x22)
@@ -445,7 +448,7 @@ class EPD_3in7(EPD):
         self.ReadBusy()
 
     # Here for reference, not actually used
-    def display(self, Image):
+    def display(self, data):
         self.send_command(0x49)
         self.send_data(0x00)
 
@@ -461,7 +464,7 @@ class EPD_3in7(EPD):
         for i in range(0, self.width * self.height // 8):
             temp3=0
             for j in range(0, 2):
-                temp1 = Image[i*2+j]
+                temp1 = data[i * 2 + j]
                 for k in range(0, 2):
                     temp2 = temp1&0x03
                     if(temp2 == 0x03):
@@ -505,7 +508,7 @@ class EPD_3in7(EPD):
         for i in range(0, self.width * self.height // 8):
             temp3=0
             for j in range(0, 2):
-                temp1 = Image[i*2+j]
+                temp1 = data[i * 2 + j]
                 for k in range(0, 2):
                     temp2 = temp1&0x03
                     if(temp2 == 0x03):
@@ -570,12 +573,18 @@ class EPD_3in7(EPD):
         self.send_data(0x00)
 
         self.send_command(0x24)
-        for j in range(0, self.height):
-            for i in range(0, int(self.width // 8)):
-                if i < int(textBufferWidth // 8) and j < int(textBufferHeight):
-                    self.send_data(textBufferByteArray[i + j * int(textBufferWidth // 8)])
-                else:
-                    self.send_data(0xff)
+
+        partial_blanks = [0xff for e in range((self.width - textBufferWidth) // 8)]
+        for i in range(0, textBufferHeight):
+            row_byte_offset = i * (textBufferWidth // 8)
+            self.send_data_array(textBufferByteArray[row_byte_offset: row_byte_offset + (textBufferWidth // 8)])
+            self.send_data_array(partial_blanks)
+        partial_blanks = None
+
+        full_blanks = [0xff for e in range(self.width // 8)]
+        for i in range(textBufferHeight, self.height):
+            self.send_data_array(full_blanks)
+        full_blanks = None
 
         self.Load_LUT(1)
 
@@ -607,9 +616,8 @@ class EPD_3in7(EPD):
 
             self.send_command(0x24)
 
-            for j in range(0, self.height):
-                for i in range(0, int(self.width // 8)):
-                    self.send_data(data[i + j * int(self.width // 8)])
+            self.send_data_array(data)
+
             send_response(200, 'OK')
 
             self.data_block_count = 1
@@ -629,10 +637,8 @@ class EPD_3in7(EPD):
             self.send_data(0x00)
 
             self.send_command(0x26)
-            
-            for j in range(0, self.height):
-                for i in range(0, int(self.width // 8)):
-                    self.send_data(data[i + j * int(self.width // 8)])
+
+            self.send_data_array(data)
 
             send_response(200, 'OK')
             
@@ -724,6 +730,7 @@ class EPD_5in65(EPD):
         blanks = [color2 for e in range(0, int(self.width // 2))]
         for j in range(0, self.height):
             self.send_data_array(blanks)
+        blanks = None
         self.send_command(0x04)   # 0x04
         self.BusyHigh()
         self.send_command(0x12)   # 0x12
@@ -733,7 +740,7 @@ class EPD_5in65(EPD):
         self.delay_ms(500)
 
     # For reference, not used
-    def display(self, image):
+    def display(self, data):
 
         self.send_command(0x61)   # Set Resolution setting
         self.send_data(0x02)
@@ -743,7 +750,7 @@ class EPD_5in65(EPD):
         self.send_command(0x10)
         for i in range(0, self.height):
             for j in range(0, int(self.width // 2)):
-                self.send_data(image[j+(int(self.width // 2)*i)])
+                self.send_data(data[j + ((self.width // 2) * i)])
 
         self.send_command(0x04)   # 0x04
         self.BusyHigh()
@@ -820,9 +827,7 @@ class EPD_5in65(EPD):
                 return
 
         index = 0
-        for i in range(0, self.height / 8):
-            self.send_data_array(data[index : index + int(self.width // 2)])
-            index += int(self.width // 2)
+        self.send_data_array(data)
 
         send_response(200, 'OK')
 
