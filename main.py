@@ -152,6 +152,10 @@ def get_wi_fi_connection(displayLines):
                 print('Error binding socket.')
                 print(e)
                 if (e.errno == 98):
+                    try:
+                        os.remove('./last-ip.txt')
+                    except:
+                        pass
                     displayLines('ADDRESS IN USE', 'Needs restart.')
                     raise SystemExit
             s.listen(1)
@@ -280,7 +284,6 @@ elif device == 'EPD_7in5_B':
 
 def displayLines(*args):
     epd.displayMessage(*args)
-    epd.delay_ms(2000)
     epd.sleep()
 
 led.on()
@@ -336,9 +339,13 @@ while True:
                     break
 
             gc.collect()
-            print("Buffer length", len(buffer[0: buffer_index]))
+            print("Buffer length", buffer_index)
             try:
-                params = bytes(buffer[0: buffer_index]).decode('ascii')
+                print('alloc bytes')
+                truncbytes = bytes(buffer[0: buffer_index])
+                print('decode ascii')
+                params = truncbytes.decode('ascii')
+                truncbytes = None
             except Exception as e:
                 print(e)
                 cl.send("HTTP/1.0 500 Server error\r\n")
