@@ -29,6 +29,11 @@ main = function(device_txt) {
         EPD_WIDTH = 600;
         EPD_HEIGHT = 448;
         AVAILABLE_COLORS = ['white', 'blank', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
+    } else if (device_txt === 'EPD_7in5_B') {
+        // Two MONO HLSB buffers (black first, red second)
+        EPD_WIDTH = 800
+        EPD_HEIGHT = 480
+        AVAILABLE_COLORS = ['white', 'black', 'red']
     }
 
    document.getElementById('caption').innerHTML = device_txt;
@@ -596,6 +601,15 @@ main = function(device_txt) {
         } else if (device_txt === 'EPD_5in65') {
             const b64_buffers = extractHMSBFromCanvas(mainCanvas);
             sequentialPost(b64_buffers);
+        } else if (device_txt === 'EPD_7in5_B') {
+            const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas)
+            // These are each 48000 bytes; split each into two chunks of 24000
+            sequentialPost([
+                black.subarray(0, black.length / 2),
+                black.subarray(black.length / 2, black.length),
+                red.subarray(0, red.length / 2),
+                red.subarray(red.length / 2, red.length)
+            ]);
         }
         closeModalButton.disabled = false;
     }

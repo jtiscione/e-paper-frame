@@ -14,7 +14,7 @@ import framebuf # For displaying status text messages
 
 import rp2 # RP-2040
 
-from epd import EPD_2in9_B, EPD_3in7, EPD_5in65
+from epd import EPD_2in9_B, EPD_3in7, EPD_5in65, EPD_7in5_B
 
 # First- figure out what device we're using and what country we're in
 device = 'EPD_5in65' # Let's assume we're using the 7 color display by default...
@@ -52,8 +52,11 @@ if device == 'EPD_5in65':
     button_0 = Pin(15, Pin.IN, Pin.PULL_UP) # GPIO 15
     button_1 = Pin(17, Pin.IN, Pin.PULL_UP) # GPIO 17
     button_2 = Pin(2, Pin.IN, Pin.PULL_UP)  # GPIO 2
+elif device == 'EPD_7in5_B':
+    # The 7.5 inch display has three buttons connected via pull-up resistors to GPIO 2, GPIO 3, and the RUN pin.
+    button_0 = Pin(2, Pin.IN, Pin.PULL_UP) # GPIO 2
+    button_1 = Pin(3, Pin.IN, Pin.PULL_UP) # GPIO 3
 # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
-# The 7.5 inch display has three buttons connected via pull-up resistors to GPIO 2, GPIO 3, and the RUN pin.
 
 # Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
 if button_0 is not None and button_0.value() == 0:
@@ -272,6 +275,8 @@ elif device == 'EPD_3in7':
     epd = EPD_3in7()
 elif device == 'EPD_5in65':
     epd = EPD_5in65()
+elif device == 'EPD_7in5_B':
+    epd = EPD_7in5_B()
 
 def displayLines(*args):
     epd.displayMessage(*args)
