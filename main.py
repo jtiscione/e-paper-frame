@@ -132,7 +132,7 @@ blink(led, 8)
 led.on()
 
 try:
-    wlan, s = bootstrap_wifi(display_lines)
+    wlan, s = bootstrap_wifi(display_lines, led)
 except RuntimeError:
     # Flash SOS to LED indefinitely
     while True:
