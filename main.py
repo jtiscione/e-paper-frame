@@ -248,6 +248,7 @@ while True:
             # This will crash: data = bytes(binascii.a2b_base64(bytes(buffer[0: buffer_index]).decode('ascii')))
             bytes_decoded = base64_decode(input_buffer, data_buffer, buffer_index)
             data = data_buffer[0: bytes_decoded]
+            print('Decoded base64')
 
             if (len(data) == 0):
                 cl.send("HTTP/1.0 400 Bad Request\r\n")
@@ -269,6 +270,7 @@ while True:
                 led.on()
                 epd.process_data_block(data, block_number, send_response)
                 led.off()
+                print('Processed data block.')
             except Exception as e:
                 print(e)
                 send_response(500, 'Server error\r\n')
@@ -299,17 +301,16 @@ while True:
                 content = ''
                 print(f'GET {uri}')
                 if mimetype != '':
+                    sent_header = False
                     try:
                         with open(f'{uri}', 'r') as requestedFile:
-                            content = requestedFile.read()
-                        if len(content) > 0:
-                            cl.send(f'HTTP/1.0 200 OK\r\nContent-type: {mimetype}\r\n\r\n')
-                            index = 0
-                            while index < len(content):
-                                # print(content[index:index + 800])
-                                index += cl.send(content[index:index + 800])
-                            print('Successfully loaded content', uri)
-                            content = None
+                            for line in requestedFile:
+                                if sent_header is False:
+                                    cl.send(f'HTTP/1.0 200 OK\r\nContent-type: {mimetype}\r\n\r\n')
+                                    sent_header = True
+                                cl.send(line)
+                        if sent_header:
+                            print('Sent content', uri)
                         else:
                             cl.send('HTTP/1.0 400 Bad Request\r\n')
                     except Exception as e:

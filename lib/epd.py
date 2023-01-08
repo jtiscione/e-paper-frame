@@ -39,6 +39,9 @@ class EPD:
     def spi_writebyte(self, data):
         self.spi.write(bytearray(data))
 
+    def spi_writebytearray(self, data_bytearray):
+        self.spi.write(data_bytearray)
+
     def module_exit(self):
         self.digital_write(self.reset_pin, 0)
 
@@ -68,7 +71,7 @@ class EPD:
     def send_data_array(self, data):
         self.digital_write(self.dc_pin, 1)
         self.digital_write(self.cs_pin, 0)
-        self.spi_writebyte(data)
+        self.spi_writebytearray(data)
         self.digital_write(self.cs_pin, 1)
 
     def init(self, *args):
