@@ -131,7 +131,7 @@ class EPD_2in9_B(EPD):
         return 0
 
     def clear(self):
-        blanks = [0xff for e in range(0, self.width // 8)]
+        blanks = bytearray([0xff for e in range(0, self.width // 8)])
 
         # Clear black
         self.send_command(0x10)
@@ -179,7 +179,7 @@ class EPD_2in9_B(EPD):
         textBufferByteArray = None
         gc.collect()
         # Rest of black image
-        blanks = [0xff for e in range(0, self.width // 8)]
+        blanks = bytearray([0xff for e in range(0, self.width // 8)])
         for j in range(textBufferHeight, self.height):
             self.send_data_array(blanks)
         self.send_command(0x13)
@@ -425,7 +425,7 @@ class EPD_3in7(EPD):
         self.send_data(0x00)
 
         self.send_command(0x24)
-        blanks = [0xff for e in range(0, wide)]
+        blanks = bytearray([0xff for e in range(0, wide)])
         for j in range(0, high):
             self.send_data_array(blanks)
 
@@ -576,14 +576,14 @@ class EPD_3in7(EPD):
 
         self.send_command(0x24)
 
-        partial_blanks = [0xff for e in range((self.width - textBufferWidth) // 8)]
+        partial_blanks = bytearray([0xff for e in range((self.width - textBufferWidth) // 8)])
         for i in range(0, textBufferHeight):
             row_byte_offset = i * (textBufferWidth // 8)
             self.send_data_array(textBufferByteArray[row_byte_offset: row_byte_offset + (textBufferWidth // 8)])
             self.send_data_array(partial_blanks)
         partial_blanks = None
 
-        full_blanks = [0xff for e in range(self.width // 8)]
+        full_blanks = bytearray([0xff for e in range(self.width // 8)])
         for i in range(textBufferHeight, self.height):
             self.send_data_array(full_blanks)
         full_blanks = None
@@ -729,7 +729,7 @@ class EPD_5in65(EPD):
         self.send_data(0xC0)
         self.send_command(0x10)
         color2 = (color<<4)|color
-        blanks = [color2 for e in range(0, int(self.width // 2))]
+        blanks = bytearray([color2 for e in range(0, int(self.width // 2))])
         for j in range(0, self.height):
             self.send_data_array(blanks)
         blanks = None
@@ -781,13 +781,13 @@ class EPD_5in65(EPD):
         self.send_data(0xC0)
         self.send_command(0x10)
         print('Sending pixel data...')
-        partial_blanks = [0x77 for e in range(0, int(self.width // 2 - halfBufferWidth))]
+        partial_blanks = bytearray([0x77 for e in range(0, int(self.width // 2 - halfBufferWidth))])
         for i in range(0, textBufferHeight): # self.height):
             row_byte_offset = i * halfBufferWidth
             self.send_data_array(textBufferByteArray[row_byte_offset : row_byte_offset + halfBufferWidth])
             self.send_data_array(partial_blanks)
         partial_blanks = None
-        full_blanks = [0x77 for e in range(0, int(self.width // 2))]
+        full_blanks = bytearray([0x77 for e in range(0, int(self.width // 2))])
         for i in range(textBufferHeight, self.height):
             self.send_data_array(full_blanks)
         full_blanks = None
@@ -918,13 +918,13 @@ class EPD_7in5_B(EPD):
     def clear(self):
 
         # Clear black
-        blanks = [0xff for e in range(0, self.width // 8)]
+        blanks = bytearray([0xff for e in range(0, self.width // 8)])
         self.send_command(0x10)
         for j in range(0, self.height):
             self.send_data_array(black_blacks)
 
         # Clear red (Clearing red means sending zeros)
-        blanks = [0x00 for e in range(0, self.width // 8)]
+        blanks = bytearray([0x00 for e in range(0, self.width // 8)])
         self.send_command(0x13)
         for j in range(0, self.height):
             self.send_data_array(red_blanks)
@@ -959,17 +959,17 @@ class EPD_7in5_B(EPD):
         self.init()
         self.send_command(0x10)
         # Top of black image
-        partial_blanks = [0xff for e in range(0, (self.width - textBufferWidth) // 8)]
+        partial_blanks = bytearray([0xff for e in range(0, (self.width - textBufferWidth) // 8)])
         for j in range(0, textBufferHeight):
             self.send_data_array(textBufferByteArray[j * (textBufferWidth // 8) : (j + 1) * (textBufferWidth // 8)])
             self.send_data_array(partial_blanks)
 
-        blanks = [0xff for e in range(0, self.width // 8)]
+        blanks = bytearray([0xff for e in range(0, self.width // 8)])
         for j in range(textBufferHeight, self.height):
             self.send_data_array(blanks)
 
         # For some reason you clear the 7.5 inch display by filling black with 0xff and red with 0x00
-        blanks = [0x00 for e in range(0, self.width // 8)]
+        blanks = bytearray([0x00 for e in range(0, self.width // 8)])
         for j in range(0, self.height):
             self.send_data_array(blanks)
 
