@@ -783,9 +783,11 @@ class EPD_5in65(EPD):
             row_byte_offset = i * halfBufferWidth
             self.send_data_array(textBufferByteArray[row_byte_offset : row_byte_offset + halfBufferWidth])
             self.send_data_array(partial_blanks)
+        partial_blanks = None
         full_blanks = [0x77 for e in range(0, int(self.width // 2))]
         for i in range(textBufferHeight, self.height):
             self.send_data_array(full_blanks)
+        full_blanks = None
 
         print('Finished sending pixel data.')
         self.send_command(0x04)   # 0x04
@@ -949,6 +951,7 @@ class EPD_7in5_B(EPD):
         image.fill(0xff)
         for h in range(0, len(args)):
             image.text(str(args[h]), 5, 12 * (1 + h), 0x00)
+        image = None
 
         self.init()
         self.send_command(0x10)
@@ -985,11 +988,11 @@ class EPD_7in5_B(EPD):
         elif block_number != self.data_block_count:
             send_response(409, 'Conflict - expected block number ' + str(self.data_block_count))
             self.data_block_count = 0
-        elif block_number == 1:
+        elif block_number == 1 or block_number == 2 or block_number == 3:
             self.send_data_array(data)
             send_response(200, 'OK')
             self.data_block_count = 1
-        elif block_number == 2:
+        elif block_number == 4:
             # Usually displays interpret HLSB data using 0 for "on" and 1 for "off", so to clear you fill with 0xff.
             # Client always assumes HLSB display is inverted and flips the pixels on the client.
             # For some reason the red channel on this display is NOT inverted, so we have to flip it back.
@@ -997,7 +1000,11 @@ class EPD_7in5_B(EPD):
             self.send_data_array([~e for e in data])
             send_response(200, 'OK')
             self.data_block_count += 1
-        elif block_number == 3:
+        elif block_number == 5 or block_number == 6 or block_number == 7:
+            self.send_data_array(data)
+            send_response(200, 'OK')
+            self.data_block_count = 1
+        elif block_number == 8:
             self.send_data_array([~e for e in data])
             send_response(200, 'OK')
             self.data_block_count = 0

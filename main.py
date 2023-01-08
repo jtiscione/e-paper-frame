@@ -1,20 +1,22 @@
 from micropython import mem_info
 from machine import Pin
+import sys
 import os
 import network
 import socket
 import time
-import urequests
-import time
 import gc
-import binascii
 import re
 import random
 import framebuf # For displaying status text messages
 
 import rp2 # RP-2040
 
+from bootstrap_wifi import bootstrap_wifi
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65, EPD_7in5_B
+
+print('STARTING...')
+mem_info()
 
 # First- figure out what device we're using and what country we're in
 device = 'EPD_5in65' # Let's assume we're using the 7 color display by default...
@@ -31,6 +33,7 @@ try:
             country_match = re.search('country\s*=\s*\"?(\w\w)\"?', uncommented_line)
             if (country_match is not None):
                 country = country_match.group(1)
+        device_lines = None
 except:
     print('Could not find/parse device.txt.')
 
@@ -42,24 +45,25 @@ rp2.country(country)
 # General setup
 
 # USER BUTTONS - These are completely optional.
-button_0 = None # If set, will display IP address on display
-button_1 = None # If set, will clear and reset display and put it in sleep mode
-button_2 = None # If set, will call machine.reset()
+button_0 = None # If pushed, will display IP address on display
+button_1 = None # Push to call sys.exit()
+button_2 = None # Push call machine.reset()
 
 if device == 'EPD_5in65':
     # The 5.65 inch display has three buttons mounted on the PCB.
     # These are connected via pull-up resistors to GPIO 15, GPIO 17, and GPIO 2.
-    button_0 = Pin(15, Pin.IN, Pin.PULL_UP) # GPIO 15
-    button_1 = Pin(17, Pin.IN, Pin.PULL_UP) # GPIO 17
-    button_2 = Pin(2, Pin.IN, Pin.PULL_UP)  # GPIO 2
+    button_0 = Pin(15, Pin.IN, Pin.PULL_UP) # GPIO 15   Display connection info on screen
+    button_1 = Pin(17, Pin.IN, Pin.PULL_UP) # GPIO 17   Clear screen
+    button_2 = Pin(2, Pin.IN, Pin.PULL_UP)  # GPIO 2  This will trigger invocation of machine.reset()
 elif device == 'EPD_7in5_B':
     # The 7.5 inch display has three buttons connected via pull-up resistors to GPIO 2, GPIO 3, and the RUN pin.
-    button_0 = Pin(2, Pin.IN, Pin.PULL_UP) # GPIO 2
-    button_1 = Pin(3, Pin.IN, Pin.PULL_UP) # GPIO 3
+    button_0 = Pin(2, Pin.IN, Pin.PULL_UP) # GPIO 2   Display connection info on screen
+    button_1 = Pin(3, Pin.IN, Pin.PULL_UP) # GPIO 3   Clear screen
+    # button_2 grounds the RUN pin and takes care of itself
 # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
 
 # Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
-if button_0 is not None and button_0.value() == 0:
+if button_1 is not None and button_1.value() == 0:
     try:
         print('Removing last-ip.txt.')
         os.remove('./last-ip.txt')
@@ -72,21 +76,20 @@ if button_0 is not None and button_0.value() == 0:
     except Exception as e:
         pass
     print('Exiting.')
-    raise SystemExit
+    sys.exit()
 
 # These flags will be checked after every socket timeout while we're waiting for a connection
-button_flag_0 = False
-button_flag_1 = False
-button_flag_2 = False
+button_0_flag = False
+button_1_flag = False
 
 def callback(pin):
-    global button_flag_0, button_flag_1, button_flag_2
+    global button_flag_0, button_flag_1
     if pin == button_0:
-        button_flag_0 = True
+        button_0_flag = True
     if pin == button_1:
-        button_flag_1 = True
+        button_1_flag = True
     if pin == button_2:
-        button_flag_2 = True
+        machine.reset()
 
 if button_0 is not None:
     button_0.irq(trigger=Pin.IRQ_FALLING, handler=callback)
@@ -100,178 +103,6 @@ if button_2 is not None:
 # Otherwise, the LED is only lit during interactions with the display.
 led = Pin("LED", machine.Pin.OUT)
 
-# This method handles all the details for getting a wireless connection even if we
-# don't know the SSID / password and have to display messages to the user
-def get_wi_fi_connection(displayLines):
-
-    # First check for a stored wireless configuration file  
-    ssid = ''
-    psk = ''
-    wlan = None
-    try:
-        with open('./wi-fi.conf', 'r') as wpa:
-            lines = wpa.read()
-            ssid_match = re.search("ssid\s*=\s*\"?(\w+)\"?", lines)
-            if ssid_match is not None:
-                ssid = ssid_match.group(1)
-            psk_match = re.search("psk\s*=\s*\"?(\w+)\"?", lines)
-            if psk_match:
-                psk = psk_match.group(1)
-
-    except OSError: # open failed
-        print('No wi-fi.conf file.')
-
-    if (ssid == '' or psk == ''):
-        print('No SSID credentials found stored in Flash.')
-    else:
-        print("Network SSID", ssid)
-
-        wlan = network.WLAN(network.STA_IF)
-        wlan.active(True)
-        wlan.connect(ssid, psk)
-
-        while not wlan.isconnected() and wlan.status() >= 0:
-            print("Waiting to connect to network", ssid)
-            time.sleep(1.0)
-        if wlan.isconnected():
-            ifconfig = wlan.ifconfig()
-            print('Connected, status', wlan.status())
-            print('status', wlan.status())
-            print('wlan', wlan)
-
-            ifconfig = wlan.ifconfig()
-            print('ifconfig', ifconfig)
-
-            addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-
-            s = socket.socket()
-            s.settimeout(1) # 1 second
-            try:
-                s.bind(addr)
-            except Exception as e:
-                print('Error binding socket.')
-                print(e)
-                if (e.errno == 98):
-                    try:
-                        os.remove('./last-ip.txt')
-                    except:
-                        pass
-                    displayLines('ADDRESS IN USE', 'Needs restart.')
-                    raise SystemExit
-            s.listen(1)
-            
-            ip = str(ifconfig[0])
-            # If this is a new IP, display it to the user
-            novel_ip = True
-            try:
-                with open('./last-ip.txt', 'r') as ipfile:
-                    if ipfile.read() == ip:
-                        novel_ip = False
-            except:
-                pass
-            
-            if novel_ip:
-                try:
-                    with open('./last-ip.txt', 'w') as ipfile:
-                        ipfile.write(ip)
-                except:
-                    pass
-                displayLines('MY IP:', str(ifconfig[0]))
-            
-            return s # Success, return socket
-        else:
-            print('Connection failed, status', wlan.status())
-            wlan.active(False)
-            wlan.deinit()
-    # Well crap...    
-    # INITIAL SETUP MODE- OPEN A WIRELESS ACCESS POINT like we're setting up a new TV
-    ap = network.WLAN(network.AP_IF)
-
-    ap_ssid = 'epaper-' + str(random.randint(100,999))
-    ap_psk = 'inky-' + str(random.randint(100, 999))
-
-    ap.config(essid=ap_ssid, password=ap_psk)
-    ap.active(True)
-    
-    while not ap.active:
-        pass
-    
-    ifconfig = ap.ifconfig()
-    print(f'Network SSID: {ap_ssid}  Password: {ap_psk}  URL: http://{ifconfig[0]}')
-    displayLines('Network SSID:', ap_ssid, '', 'Password:', ap_psk, '', 'Local IP:', str(ifconfig[0]))
-
-    addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(120)
-    s.bind(addr)
-    s.listen(1)
-    while True:
-        try:
-            cl, addr = s.accept()
-            try:
-                print('Client connected from', addr)
-                request = cl.recv(2048)
-                request_text = request.decode('ascii')
-                print(request_text)
-                if request_text.startswith("POST /wifi"):
-                    ssid_match = re.search("ssid=(\w+)", request_text)
-                    if ssid_match is not None:
-                        ssid = ssid_match.group(1)
-                    psk_match = re.search("psk=(\w+)", request_text)
-                    if psk_match is not None:
-                        psk = psk_match.group(1)
-                    print('ssid', ssid)
-                    print('psk', psk)
-                    with open('./wi-fi.conf', 'w') as conf_file:
-                        conf_file.write(f'ssid="{ssid}"\npsk="{psk}"')
-                    cl.send(f"""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n
-                        <html>
-                            <body style='font-family: "system-ui", serif;text-align:center'>
-                                SUCCESS. Power cycle the device to have it connect to {ssid}.
-                            </body>
-                        </html>""")
-                    cl.close()
-                    s.close()
-                    raise SystemExit
-                    break
-                
-                if request_text.startswith('GET '):
-                    cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-                    content = f"""
-                        <html>
-                            <body style='font-family: "system-ui", serif;text-align:center'>
-                                <h1>E-Paper Frame</h1>
-                                <h2>WIRELESS NETWORK SETUP</h2>
-                                <form action="/wifi" method="POST">
-                                  <label for="ssid">Network SSID:</label><br>
-                                  <input type="text" id="ssid" name="ssid" value="{ssid}"><br>
-                                  <label for="psk">Password:</label><br>
-                                  <input type="password" id="psk" name="psk" value="{psk}"><br><br>
-                                  <input type="submit" value="Submit">
-                                </form>
-                            </body>
-                        </html>
-                    """
-                    index = 0
-                    while index < len(content):
-                        # print(content[index:index + 800])
-                        index += cl.send(content[index:index + 800])
-                    cl.close()
-            except Exception as e:
-                if e.errno != 110:
-                    print('Error handling request')
-                    print(e)
-                cl.send(f"HTTP/1.0 500 Server error (errno {e.errno})\r\n")
-                cl.close()
-                continue
-        except Exception as e:
-            if e.errno != 110:
-                print('Error listening on socket')
-                print(e)
-            continue
-    return wlan
-
 epd = None
 if device == 'EPD_2in9_B':
     epd = EPD_2in9_B()
@@ -282,32 +113,102 @@ elif device == 'EPD_5in65':
 elif device == 'EPD_7in5_B':
     epd = EPD_7in5_B()
 
-def displayLines(*args):
+def display_lines(*args):
     epd.displayMessage(*args)
     epd.sleep()
 
 led.on()
-s = get_wi_fi_connection(displayLines)
+
+try:
+    wlan, s = bootstrap_wifi(display_lines)
+except RuntimeError:
+    # Flash SOS to LED indefinitely
+    while True:
+        for delay in [100, 500, 100]:
+            for i in range(0, 3):
+                led.on()
+                time.sleep_ms(delay)
+                led.off()
+                time.sleep_ms(100)
+            time.sleep_ms(200)
+        time.sleep_ms(750)
+
 led.off()
 
+input_buffer = memoryview(bytearray(22500))
+data_buffer = memoryview(bytearray(16875))
+
+# Can't use Micropython's standard base64 library because of memory allocation errors.
+# Even with more than 100 kilobytes available and only 20 kilobytes of data, this will crash:
+# bytes(binascii.a2b_base64(bytes(input_buffer[0: buffer_index]).decode('ascii')))
+def base64_value(c):
+    if c >= 65 and c < 91: # A-Z
+        return c - 65
+    if c >= 97 and c < 123: # a-z
+        return 26 + (c - 97)
+    if c >= 48 and c <= 58: # 0-9
+        return 52 + (c - 48)
+    if c == 43:
+        return 62
+    if c == 47:
+        return 63
+    return -1 # equals
+    
+# Returns number of decoded bytes (usually 3 if no padding)
+def base64_decode_single(four_in, three_out):
+    in_1 = base64_value(four_in[0])
+    in_2 = base64_value(four_in[1])
+    in_3 = base64_value(four_in[2])
+    in_4 = base64_value(four_in[3])
+    three_out[0] = ((in_1 & 0x3F) << 2) | (in_2 >> 4)
+    three_out[1] = 0
+    three_out[2] = 0
+    if in_3 == -1:
+        return 1
+    three_out[1] = ((in_2 & 0x0F) << 4) | (in_3 >> 2)
+    if in_4 == -1:
+        return 2
+    three_out[2] = ((in_3 & 0x03) << 6) | in_4
+    return 3
+
+def base64_decode(input_buf, output_buf, input_length):
+    bytes_decoded = 0
+    for i in range(0, input_length // 4):
+        input_index = 4 * i
+        bytes_decoded += base64_decode_single(input_buf[4 * i : 4 * (i + 1)], output_buf[bytes_decoded : bytes_decoded + 3])
+    return bytes_decoded
+
 mem_info()
-
-incoming_buffer = bytearray(24576)
-
 last_successful_post = None
 
 while True:
     try:
         cl, addr = s.accept()
+        mem_info()
         print('Client connected from', addr)
+        addr = None
         request = cl.recv(2048)
-        
+        # avoid memory issues by not decoding to ascii
         if len(request) > 0 and request[0] == 80: #'P' for post
             print(request)
+            if request[6] == 107 and request[7] == 105 and request[8] == 108 and request[9] == 108: # "POST /kill"
+                cl.send(f"""HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n
+                        <html>
+                            <body style='font-family: "system-ui", serif;text-align:center'>
+                                SHUTTING DOWN.
+                            </body>
+                        </html>""")
+                cl.close()
+                cl = None
+                request = None
+                break
+            
             block_number = request[11] - 48
             if (block_number < 0 or block_number >= epd.expected_block_count):
                 cl.send("HTTP/1.0 404 Bad block_number " + block_number)
                 cl.close()
+                cl = None
+                request = None
                 continue
             
             start = 0
@@ -319,16 +220,19 @@ while True:
             if (i == 0):
                 cl.send("HTTP/1.0 400 Bad Request (no start found)\r\n")
                 cl.close()
+                cl = None
+                request = None
                 continue
 
-            buffer = memoryview(incoming_buffer)
+            request = None
+            gc.collect()
             buffer_index = 0
             chunk_length = 0
 
             print('Reading buffer')
             while True:
                 try:
-                    chunk_length = cl.readinto(buffer[buffer_index: buffer_index + 1], 1)
+                    chunk_length = cl.readinto(input_buffer[buffer_index: buffer_index + 1], 1)
                 except Exception as e:
                     if e.errno != 110:
                         print('memorybuffer readinto exception')
@@ -340,31 +244,15 @@ while True:
 
             gc.collect()
             print("Buffer length", buffer_index)
-            try:
-                print('alloc bytes')
-                truncbytes = bytes(buffer[0: buffer_index])
-                print('decode ascii')
-                params = truncbytes.decode('ascii')
-                truncbytes = None
-            except Exception as e:
-                print(e)
-                cl.send("HTTP/1.0 500 Server error\r\n")
-                cl.close()
-                continue
-            try:
-                data = bytes(binascii.a2b_base64(params))
-            except Exception as e:
-                print('Throwing 500 error for exception', e)
-                cl.send("HTTP/1.0 500 Incorrect padding\r\n")
-                cl.close()
-                continue
-            params = None
-            print('Deta length', len(data))
-            gc.collect()
-            
+
+            # This will crash: data = bytes(binascii.a2b_base64(bytes(buffer[0: buffer_index]).decode('ascii')))
+            bytes_decoded = base64_decode(input_buffer, data_buffer, buffer_index)
+            data = data_buffer[0: bytes_decoded]
+
             if (len(data) == 0):
                 cl.send("HTTP/1.0 400 Bad Request\r\n")
                 cl.close()
+                cl = None
                 continue
             
             def send_response(status_code, status_text):
@@ -385,8 +273,10 @@ while True:
                 print(e)
                 send_response(500, 'Server error\r\n')
             data = None
+            cl = None
+            request = None
             gc.collect()
-            mem_info()
+            continue
 
         if len(request) > 0 and request[0] == 71: # 'G' for GET
             requestStr = request.decode('utf-8')
@@ -405,6 +295,7 @@ while True:
                     mimetype = 'text/css'
                 if extension == '.txt':
                     mimetype = 'text/plain'
+                extension = None
                 content = ''
                 print(f'GET {uri}')
                 if mimetype != '':
@@ -418,6 +309,7 @@ while True:
                                 # print(content[index:index + 800])
                                 index += cl.send(content[index:index + 800])
                             print('Successfully loaded content', uri)
+                            content = None
                         else:
                             cl.send('HTTP/1.0 400 Bad Request\r\n')
                     except Exception as e:
@@ -435,6 +327,8 @@ while True:
                 requestStr = None
                 requestLines = None
                 request = None
+                uri = None
+                cl = None
                 gc.collect()
 
         
@@ -455,39 +349,23 @@ while True:
                 epd.sleep()
                 led.off()
             else:
-                # Check buttons
-                if button_flag_0 or button_flag_1 or button_flag_2:
+                # Check button
+                if button_0_flag:
                     # Reset POST sequence state variables
                     block_number = 0
                     last_successful_post = None
                     # Turn on the LED
                     led.on()
-                    if button_flag_0:
-                        print("Detected button 0")
-                        ip = 'UNKNOWN'
-                        try:
-                            with open('./last-ip.txt', 'r') as ipfile: # TODO - get this from the socket instead (WLAN not in scope)
-                                ip = ipfile.read()
-                        except:
-                            pass                    
-                        displayLines('MY IP:', ip) # displayLines() takes care of putting display to sleep
-                        button_flag_0 = False
-                    elif button_flag_1:
-                        print("Detected button 1")
-                        epd.init()
-                        print('Clearing')
-                        epd.clear()
-                        print('Delay')
-                        epd.delay_ms(2000)
-                        print('sleep...')
-                        epd.sleep()
-                        print('done.')
-                        button_flag_1 = False
-                    elif button_flag_2:
-                        print("Detected button 2")
-                        epd.reset()
-                        epd.delay_ms(2000)
-                        epd.sleep()
-                        button_flag_2 = False
-                    # Finished interacting with display, turn LED off
+                    ip = None
+                    if wlan.isconnected():
+                        ifconfig = wlan.ifconfig()
+                        ip = str(ifconfig[0])
+                        display_lines('HTTP address:', ip) # displayLines() takes care of putting display to sleep
+                    else:
+                        display_lines('NOT CONNECTED.')
+                    button_flag_0 = False
                     led.off()
+                elif button_1_flag:
+                    button_1_flag = False
+                    break
+print('Exiting.')

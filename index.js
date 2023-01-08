@@ -603,12 +603,17 @@ main = function(device_txt) {
             sequentialPost(b64_buffers);
         } else if (device_txt === 'EPD_7in5_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas)
-            // These are each 48000 bytes; split each into two chunks of 24000
+            // These are each 48000 bytes; split each into four chunks of 12000
+            quarter = black.length / 4
             sequentialPost([
-                black.subarray(0, black.length / 2),
-                black.subarray(black.length / 2, black.length),
-                red.subarray(0, red.length / 2),
-                red.subarray(red.length / 2, red.length)
+                black.subarray(0, quarter),
+                black.subarray(quarter, 2 * quarter),
+                black.subarray(2 * quarter, 3 * quarter),
+                black.subarray(3 * quarter, 4 * quarter),
+                red.subarray(0, quarter),
+                red.subarray(quarter, 2 * quarter),
+                red.subarray(2 * quarter, 3 * quarter),
+                red.subarray(3 * quarter, 4 * quarter),
             ]);
         }
         closeModalButton.disabled = false;
