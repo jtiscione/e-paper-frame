@@ -12,12 +12,22 @@ import framebuf # For displaying status text messages
 
 import rp2 # RP-2040
 
-from bootstrap_wifi import bootstrap_wifi
+from bootstrap_wifi import bootstrap_wifi, blink
+
 from epd import EPD_2in9_B, EPD_3in7, EPD_5in65, EPD_7in5_B
+
+from base64_decoder import base64_decode
+
+# We will have the LED on during startup while it's trying to connect to the network.
+# If it cannot connect, the script enters "initial setup mode" and the LED remains on.
+# Otherwise, the LED is only lit during interactions with the display.
+led = Pin("LED", machine.Pin.OUT)
+
+blink(led, 3)
 
 print('STARTING...')
 mem_info()
-
+blink(led, 4)
 # First- figure out what device we're using and what country we're in
 device = 'EPD_5in65' # Let's assume we're using the 7 color display by default...
 country = 'US'       # and of course
@@ -37,6 +47,7 @@ try:
 except:
     print('Could not find/parse device.txt.')
 
+blink(led, 5)
 print('device', device)
 print('country', country)
 
@@ -61,6 +72,8 @@ elif device == 'EPD_7in5_B':
     button_1 = Pin(3, Pin.IN, Pin.PULL_UP) # GPIO 3   Clear screen
     # button_2 grounds the RUN pin and takes care of itself
 # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
+
+blink(led, 6)
 
 # Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
 if button_1 is not None and button_1.value() == 0:
@@ -98,10 +111,7 @@ if button_1 is not None:
 if button_2 is not None:
     button_2.irq(trigger=Pin.IRQ_FALLING, handler=callback)
 
-# We will have the LED on during startup while it's trying to connect to the network.
-# If it cannot connect, the script enters "initial setup mode" and the LED remains on.
-# Otherwise, the LED is only lit during interactions with the display.
-led = Pin("LED", machine.Pin.OUT)
+blink(led, 7)
 
 epd = None
 if device == 'EPD_2in9_B':
@@ -116,6 +126,8 @@ elif device == 'EPD_7in5_B':
 def display_lines(*args):
     epd.displayMessage(*args)
     epd.sleep()
+
+blink(led, 8)
 
 led.on()
 
@@ -132,51 +144,16 @@ except RuntimeError:
                 time.sleep_ms(100)
             time.sleep_ms(200)
         time.sleep_ms(750)
+except Exception as e:
+    print("Unexpected error:", e)
+    sys.exit()
 
 led.off()
 
+blink(led, 2)
+
 input_buffer = memoryview(bytearray(22500))
 data_buffer = memoryview(bytearray(16875))
-
-# Can't use Micropython's standard base64 library because of memory allocation errors.
-# Even with more than 100 kilobytes available and only 20 kilobytes of data, this will crash:
-# bytes(binascii.a2b_base64(bytes(input_buffer[0: buffer_index]).decode('ascii')))
-def base64_value(c):
-    if c >= 65 and c < 91: # A-Z
-        return c - 65
-    if c >= 97 and c < 123: # a-z
-        return 26 + (c - 97)
-    if c >= 48 and c <= 58: # 0-9
-        return 52 + (c - 48)
-    if c == 43:
-        return 62
-    if c == 47:
-        return 63
-    return -1 # equals
-    
-# Returns number of decoded bytes (usually 3 if no padding)
-def base64_decode_single(four_in, three_out):
-    in_1 = base64_value(four_in[0])
-    in_2 = base64_value(four_in[1])
-    in_3 = base64_value(four_in[2])
-    in_4 = base64_value(four_in[3])
-    three_out[0] = ((in_1 & 0x3F) << 2) | (in_2 >> 4)
-    three_out[1] = 0
-    three_out[2] = 0
-    if in_3 == -1:
-        return 1
-    three_out[1] = ((in_2 & 0x0F) << 4) | (in_3 >> 2)
-    if in_4 == -1:
-        return 2
-    three_out[2] = ((in_3 & 0x03) << 6) | in_4
-    return 3
-
-def base64_decode(input_buf, output_buf, input_length):
-    bytes_decoded = 0
-    for i in range(0, input_length // 4):
-        input_index = 4 * i
-        bytes_decoded += base64_decode_single(input_buf[4 * i : 4 * (i + 1)], output_buf[bytes_decoded : bytes_decoded + 3])
-    return bytes_decoded
 
 mem_info()
 last_successful_post = None

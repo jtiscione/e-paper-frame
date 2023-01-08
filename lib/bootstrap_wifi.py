@@ -9,6 +9,17 @@ import gc
 import re
 import random
 
+
+def blink(led, times):
+    led.off()
+    time.sleep_ms(1000)
+    for i in range(0, times):
+        led.on()
+        time.sleep_ms(200)
+        led.off()
+        time.sleep_ms(100)
+    time.sleep_ms(1000)
+    
 # This method handles all the details for setting up a wireless connection.
 # If we don't have the SSID / password yet, it will set up a wireless access point
 # to serve an HTML form for entering the wifi credentials.
@@ -27,12 +38,14 @@ import random
 # do something like blink an LED indefinitely or invoke machine.reset().
 #
 # Returns the connection and a socket listening on port 80.
-def bootstrap_wifi(display_lines):
+def bootstrap_wifi(display_lines, led):
 
     # First check for a stored wireless configuration file  
     ssid = ''
     psk = ''
     wlan = None
+    blink(led, 9)
+
     try:
         with open('./wi-fi.conf', 'r') as wpa:
             lines = wpa.read()
@@ -46,6 +59,7 @@ def bootstrap_wifi(display_lines):
     except OSError: # open failed
         print('No wi-fi.conf file.')
 
+    blink(led, 10)
     if (ssid == '' or psk == ''):
         print('No SSID credentials found stored in Flash.')
     else:
@@ -109,11 +123,13 @@ def bootstrap_wifi(display_lines):
             wlan.active(False)
             wlan.deinit()
     # Well crap...    
+    blink(led, 3)
     # INITIAL SETUP MODE- OPEN A WIRELESS ACCESS POINT like we're setting up a new TV
     ap = network.WLAN(network.AP_IF)
 
-    ap_ssid = 'epaper-' + str(random.randint(100,999))
-    ap_psk = 'inky-' + str(random.randint(100, 999))
+    suffix = str(random.randint(100, 999))
+    ap_ssid = 'epaper-' + suffix
+    ap_psk = 'inky-' + suffix
 
     ap.config(essid=ap_ssid, password=ap_psk)
     ap.active(True)
@@ -123,7 +139,12 @@ def bootstrap_wifi(display_lines):
     
     ifconfig = ap.ifconfig()
     print(f'Network SSID: {ap_ssid}  Password: {ap_psk}  URL: http://{ifconfig[0]}')
+
+    blink(led, 4)
+
     display_lines('Network SSID:', ap_ssid, 'Password:', ap_psk, 'HTTP address:', str(ifconfig[0]))
+
+    blink(led, 5)
 
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
@@ -209,5 +230,6 @@ def bootstrap_wifi(display_lines):
                 print('Error listening on socket')
                 print(e)
                 time.sleep_ms(1000)
+            led.toggle()
             continue
     raise RuntimeError('SETTINGS CHANGED. Needs hard reset.')
