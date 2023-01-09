@@ -21,7 +21,7 @@ from base64_decoder import base64_decode
 # Otherwise, the LED is only lit during interactions with the display.
 led = Pin("LED", machine.Pin.OUT)
 
-toggles = [200, 100, 200, 150, 100, 100, 100, 250, 100, 400, 200, 200, 200, 200]
+toggles = [200, 100, 200, 250, 100, 100, 100, 250, 100, 400, 200, 200, 200, 500]
 
 for i in toggles:
     led.toggle()
