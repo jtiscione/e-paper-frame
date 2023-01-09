@@ -42,6 +42,9 @@ Since this is a narrow and tall display (280 x 480 pixels), the UI positions it 
 The UI allows use of 7 colors (as well as a blank color with no ink)
 ![5.65-inch Van Gogh UI](https://user-images.githubusercontent.com/5413726/209608489-0be822aa-fd57-49d8-bf23-fdae95ebe289.png)
 
+### EPD_7in5_B
+7.5 inch red/black e-ink display, resolution 800 x 480. I don't physically have one of these so I don't know if it works.
+
 # WIRING
 
 All of these e-paper devices are assumed to be wired as follows:
@@ -66,7 +69,7 @@ The following files must be transferred to the Pico W filesystem using Thonny or
 - `index.js`
 - `device.txt` (specifying a country code and one of the device codes above)
 - `main.py`
-- `epd.py` (must be present in subfolder `lib`)
+- The `lib` folder (including `base64_decoder.py`, `bootstrap_wifi.py`, `epd.py`, etc.)
 
 Unfortunately there is no way for the Pico to automatically determine which type of e-paper device it is connected to.
 There is also, obviously, no way to automatically figure out the country code to use for the wireless configuration.
@@ -150,7 +153,7 @@ So far this project only supports e-ink devices I actually have.
 - [ ] EPD_5in83: 5.83 inch 4-color grayscale display
 - [ ] EPD_5in83B: the red/black version
 - [ ] EPD_7in5 is the 7.5 inch 4-color grayscale display
-- [ ] EPD_7in5B is the red/black version
+- [x] EPD_7in5B is the red/black version (UNTESTED)
 
 Will check these off as support gets added.
 
@@ -158,5 +161,3 @@ Additional TODOs:
 
 - [ ] Support touch events on mobile devices
 - [ ] Improve Floyd-Steinberg palette color selection
-
-In addition, the JavaScript code needs to support touch events on mobile devices.
