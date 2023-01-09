@@ -12,9 +12,7 @@ import framebuf # For displaying status text messages
 
 import rp2 # RP-2040
 
-from bootstrap_wifi import bootstrap_wifi, blink
-
-from epd import EPD_2in9_B, EPD_3in7, EPD_5in65, EPD_7in5_B
+from bootstrap_wifi import bootstrap_wifi
 
 from base64_decoder import base64_decode
 
@@ -23,11 +21,15 @@ from base64_decoder import base64_decode
 # Otherwise, the LED is only lit during interactions with the display.
 led = Pin("LED", machine.Pin.OUT)
 
-blink(led, 3)
+toggles = [200, 100, 200, 150, 100, 100, 100, 250, 100, 400, 200, 200, 200, 200]
+
+for i in toggles:
+    led.toggle()
+    time.sleep_ms(i)
 
 print('STARTING...')
 mem_info()
-blink(led, 4)
+
 # First- figure out what device we're using and what country we're in
 device = 'EPD_5in65' # Let's assume we're using the 7 color display by default...
 country = 'US'       # and of course
@@ -47,13 +49,13 @@ try:
 except:
     print('Could not find/parse device.txt.')
 
-blink(led, 5)
 print('device', device)
 print('country', country)
 
 rp2.country(country)
 
 # General setup
+led.on()
 
 # USER BUTTONS - These are completely optional.
 button_0 = None # If pushed, will display IP address on display
@@ -73,7 +75,7 @@ elif device == 'EPD_7in5_B':
     # button_2 grounds the RUN pin and takes care of itself
 # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
 
-blink(led, 6)
+led.off()
 
 # Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
 if button_1 is not None and button_1.value() == 0:
@@ -111,25 +113,27 @@ if button_1 is not None:
 if button_2 is not None:
     button_2.irq(trigger=Pin.IRQ_FALLING, handler=callback)
 
-blink(led, 7)
+led.on()
 
 epd = None
 if device == 'EPD_2in9_B':
+    from EPD_2in9_B import EPD_2in9_B
     epd = EPD_2in9_B()
 elif device == 'EPD_3in7':
+    from EPD_3in7 import EPD_3in7
     epd = EPD_3in7()
 elif device == 'EPD_5in65':
+    from EPD_5in65 import EPD_5in65
     epd = EPD_5in65()
 elif device == 'EPD_7in5_B':
+    from EPD_7in5_B import EPD_7in5_B
     epd = EPD_7in5_B()
+
+led.off()
 
 def display_lines(*args):
     epd.displayMessage(*args)
     epd.sleep()
-
-blink(led, 8)
-
-led.on()
 
 try:
     wlan, s = bootstrap_wifi(display_lines, led)
@@ -147,10 +151,6 @@ except RuntimeError:
 except Exception as e:
     print("Unexpected error:", e)
     sys.exit()
-
-led.off()
-
-blink(led, 2)
 
 input_buffer = memoryview(bytearray(22500))
 data_buffer = memoryview(bytearray(16875))
@@ -314,6 +314,10 @@ while True:
         if e.errno != 110:
             print(e)
         else:
+            led.on()
+            time.sleep_ms(1)
+            led.off()
+            
             # Timeout error, should be once per second when device is idle
             if (last_successful_post is not None) and (time.time() - last_successful_post > 3600):
                 # This happens when we've been waiting for a POST request for an hour.
