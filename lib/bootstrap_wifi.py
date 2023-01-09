@@ -9,17 +9,6 @@ import gc
 import re
 import random
 
-
-def blink(led, times):
-    led.off()
-    time.sleep_ms(100)
-    for i in range(0, times):
-        led.on()
-        time.sleep_ms(100)
-        led.off()
-        time.sleep_ms(100)
-    time.sleep_ms(500)
-    
 # This method handles all the details for setting up a wireless connection.
 # If we don't have the SSID / password yet, it will set up a wireless access point
 # to serve an HTML form for entering the wifi credentials.
@@ -44,7 +33,6 @@ def bootstrap_wifi(display_lines, led):
     ssid = ''
     psk = ''
     wlan = None
-    blink(led, 2)
 
     try:
         with open('./wi-fi.conf', 'r') as wpa:
@@ -118,14 +106,12 @@ def bootstrap_wifi(display_lines, led):
                 except:
                     pass
                 display_lines('HTTP address:', str(ifconfig[0]))
-            blink(led, 3)
             return wlan, s # Success, return wlan and socket
         else:
             print('Connection failed, status', wlan.status())
             wlan.active(False)
             wlan.deinit()
-    # Well crap...    
-    blink(led, 4)
+    # Well crap...
     # INITIAL SETUP MODE- OPEN A WIRELESS ACCESS POINT like we're setting up a new TV
     ap = network.WLAN(network.AP_IF)
 
@@ -148,10 +134,9 @@ def bootstrap_wifi(display_lines, led):
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(120)
+    s.settimeout(1) # 1 second
     s.bind(addr)
     s.listen(1)
-    blink(led, 5)
     while True:
         try:
             cl, addr = s.accept()
@@ -230,6 +215,8 @@ def bootstrap_wifi(display_lines, led):
                 print('Error listening on socket')
                 print(e)
                 time.sleep_ms(1000)
-            led.toggle()
+            led.on()
+            time.sleep_ms(1)
+            led.off()
             continue
     raise RuntimeError('SETTINGS CHANGED. Needs hard reset.')
