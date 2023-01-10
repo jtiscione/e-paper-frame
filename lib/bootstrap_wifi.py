@@ -115,9 +115,8 @@ def bootstrap_wifi(display_lines, led):
     # INITIAL SETUP MODE- OPEN A WIRELESS ACCESS POINT like we're setting up a new TV
     ap = network.WLAN(network.AP_IF)
 
-    suffix = str(random.randint(100, 999))
-    ap_ssid = 'epaper-' + suffix
-    ap_psk = 'inky-' + suffix
+    ap_ssid = 'epaper-' + str(random.randint(100, 999))
+    ap_psk = 'inky-' + str(random.randint(100, 999))
 
     ap.config(essid=ap_ssid, password=ap_psk)
     ap.active(True)
