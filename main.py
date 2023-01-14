@@ -344,7 +344,7 @@ while True:
                         display_lines('HTTP address:', ip) # displayLines() takes care of putting display to sleep
                     else:
                         display_lines('NOT CONNECTED.')
-                    button_flag_0 = False
+                    button_0_flag = False
                     led.off()
                 elif button_1_flag:
                     button_1_flag = False
