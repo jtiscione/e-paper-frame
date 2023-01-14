@@ -77,7 +77,7 @@ elif device == 'EPD_7in5_B':
 led.off()
 
 # Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
-if button_1 is not None and button_1.value() == 0:
+if button_0 is not None and button_0.value() == 0:
     try:
         print('Removing last-ip.txt.')
         os.remove('./last-ip.txt')
@@ -97,7 +97,7 @@ button_0_flag = False
 button_1_flag = False
 
 def callback(pin):
-    global button_flag_0, button_flag_1
+    global button_0_flag, button_1_flag
     if pin == button_0:
         button_0_flag = True
     if pin == button_1:

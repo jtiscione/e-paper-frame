@@ -37,11 +37,11 @@ def bootstrap_wifi(display_lines, led):
     try:
         with open('./wi-fi.conf', 'r') as wpa:
             lines = wpa.read()
-            ssid_match = re.search("ssid\s*=\s*\"?(\w+)\"?", lines)
+            ssid_match = re.search("ssid\s*=\s*\"?([^\r\n\"]+)\"?", lines)
             if ssid_match is not None:
                 ssid = ssid_match.group(1)
-            psk_match = re.search("psk\s*=\s*\"?(\w+)\"?", lines)
-            if psk_match:
+            psk_match = re.search("psk\s*=\s*\"?([^\r\n\"]+)\"?", lines)
+            if psk_match is not None:
                 psk = psk_match.group(1)
 
     except OSError: # open failed
@@ -145,12 +145,14 @@ def bootstrap_wifi(display_lines, led):
                 request_text = request.decode('ascii')
                 print(request_text)
                 if request_text.startswith("POST /wifi"):
-                    ssid_match = re.search("ssid=(\w+)", request_text)
+                    ssid_match = re.search("ssid=\"?([^\r\n\&\"]+)\"?", request_text)
                     if ssid_match is not None:
                         ssid = ssid_match.group(1)
-                    psk_match = re.search("psk=(\w+)", request_text)
+                        ssid = ssid.replace('+', ' ')
+                    psk_match = re.search("psk=\"?([^\r\n\&\"]+)\"?", request_text)
                     if psk_match is not None:
                         psk = psk_match.group(1)
+                        psk = psk.replace('+', ' ')
                     print('ssid', ssid)
                     print('psk', psk)
                     with open('./wi-fi.conf', 'w') as conf_file:
