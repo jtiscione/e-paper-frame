@@ -437,7 +437,7 @@ main = function(device_txt) {
     }
 
     // Grayscale 4 color
-    function extractHLSBFromCanvasGray4(canvas) {
+    function extractHLSBFromCanvasGray4(canvas, flipGreys=false) {
         const imageData = mainContext.getImageData(0, 0, canvas.width, canvas.height);
         const buffer = imageData.data.buffer;  // ArrayBuffer
         const byteBuffer = new Uint8ClampedArray(buffer);
@@ -456,11 +456,20 @@ main = function(device_txt) {
                 const blue = byteBuffer[buffer_index++];
                 const alpha = byteBuffer[buffer_index++];
                 const color = findClosestPaletteColor(red, green, blue, alpha);
-                if (color === 'white' || color === 'darkgrey') {
-                    first_HLSB[hlsb_index] |= (1 << bitshift);
-                }
-                if (color === 'white' || color === 'lightgrey') {
-                    second_HLSB[hlsb_index] |= (1 << bitshift);
+                if (flipGreys) {
+                    if (color === 'white' || color === 'lightgrey') {
+                        first_HLSB[hlsb_index] |= (1 << bitshift);
+                    }
+                    if (color === 'white' || color === 'darkgrey') {
+                        second_HLSB[hlsb_index] |= (1 << bitshift);
+                    }
+                } else {
+                    if (color === 'white' || color === 'darkgrey') {
+                        first_HLSB[hlsb_index] |= (1 << bitshift);
+                    }
+                    if (color === 'white' || color === 'lightgrey') {
+                        second_HLSB[hlsb_index] |= (1 << bitshift);
+                    }
                 }
                 if (bitshift === 0) {
                     bitshift += 8;
@@ -602,8 +611,11 @@ main = function(device_txt) {
         if (device_txt === 'EPD_2in9_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas);
             sequentialPost([black, red]);
-        } else if (device_txt === 'EPD_3in7' || device_txt === 'EPD_4in2') {
+        } else if (device_txt === 'EPD_3in7') {
             const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas);
+            sequentialPost(b64_buffers);
+        } else if (device_txt === 'EPD_4in2') {
+            const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas, true);
             sequentialPost(b64_buffers);
         } else if (device_txt === 'EPD_5in65') {
             const b64_buffers = extractHMSBFromCanvas(mainCanvas);
