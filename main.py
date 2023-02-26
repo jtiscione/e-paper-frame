@@ -72,7 +72,10 @@ elif device == 'EPD_7in5_B':
     button_0 = Pin(2, Pin.IN, Pin.PULL_UP) # GPIO 2   Display connection info on screen
     button_1 = Pin(3, Pin.IN, Pin.PULL_UP) # GPIO 3   Clear screen
     # button_2 grounds the RUN pin and takes care of itself
-# The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
+elif device == 'EPD_4in2':
+    # The 4.2 inch display has two buttons connected via pull-up resistors to GPIO 15 and GPIO 17.
+    button_0 = Pin(15, Pin.IN, Pin.PULL_UP)
+    button_1 = Pin(17, Pin.IN, Pin.PULL_UP)
 
 led.off()
 
@@ -115,6 +118,9 @@ if button_2 is not None:
 led.on()
 
 epd = None
+if device == 'EPD_2in13_B':
+    from EPD_2in13_B import EPD_2in13_B
+    epd = EPD_2in13_B()
 if device == 'EPD_2in9_B':
     from EPD_2in9_B import EPD_2in9_B
     epd = EPD_2in9_B()

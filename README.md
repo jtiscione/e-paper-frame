@@ -13,8 +13,21 @@ Pico W using a series of HTTP POST requests. The image will then remain displaye
 
 # SUPPORTED DEVICES
 
-So far three Waveshare boards are supported: the 2.9 inch two color display, the 3.7 inch four color grayscale display,
-and the 5.65 inch 7 color ACeP display. The script assigns a code to each type of display.
+So far six Waveshare boards are supported:
+- 2.13 inch two color display
+- 2.9 inch two color display
+- 3.7 inch four color grayscale display
+- 4.2 inch four color grayscale display
+- 5.65 inch 7 color ACeP display
+- 7.5 inch two color display
+
+The script assigns a code to each type of display.
+
+### EPD_2in13B
+
+2.13 inch 104x212 red/black e-ink display.
+UI allows use of white, red, and black only.
+Since this is a narrow and tall display (104 x 212 pixels), the UI positions it sideways by default.
 
 ### EPD_2in9B
 
@@ -31,6 +44,10 @@ Since this is a narrow and tall display (128 x 296 pixels), the UI positions it 
 UI allows use of black, white, light gray, and dark gray.
 ![3.7 inch 4-color grayscale UI](https://user-images.githubusercontent.com/5413726/209608665-6353bade-e588-4d14-8b14-b4f0e2c77561.png)
 Since this is a narrow and tall display (280 x 480 pixels), the UI positions it sideways by default.
+
+### EPD_4in2
+4.2 inch 400x300 four-color grayscal e-ink display.
+UI allows use of white, red, and black only.
 
 ### EPD_5in65
 
@@ -73,7 +90,7 @@ The following files must be transferred to the Pico W filesystem using Thonny or
 
 Unfortunately there is no way for the Pico to automatically determine which type of e-paper device it is connected to.
 There is also, obviously, no way to automatically figure out the country code to use for the wireless configuration.
-So the Pico W filesystem must contain a file named `device.txt` that contains  two lines of the form:
+So the Pico W filesystem must contain a file named `device.txt` that contains two lines of the form:
 
 ```
 device="EPD_5in65"
@@ -82,10 +99,10 @@ country="US"
 
 If you do not have a 5.65 inch display, you need to edit device.txt and replace its device "EPD_5in65" with one of the
 other currently supported codes (currently "EPD_3in7" and "EPD_2in9B" are supported). You must also edit `device.txt`
-if you do not live in the U.S.
+with the correct code if you do not live in the U.S. so that the wi-fi works correctly.
 
-After transferring these six files to the Pico, it can be disconnected. A computer is no longer needed.
-The `main.py` script will start up once the Pico is connected to USB power.
+After transferring these six files to the Pico, it can be disconnected. The `main.py` script will start up once the Pico
+is connected to USB power.
 
 Since there are no wi-fi credentials set up initially, the e-paper display will render a message within a minute,
 reporting that it has created its own wireless access point. It will display the network name and password,
@@ -127,9 +144,12 @@ proceed with the next request. The protocol surrounding this process varies slig
 all accept data in different FrameBuffer formats such as FrameBuffer.HLSB and FrameBuffer.HMSB, and the procedure is a
 little different from one to the next:
 
+- `EPD_2in13B`: receives 2 POST requests, one with HLSB data for black and one with HLSB data for red.
 - `EPD_2in9B`: receives 2 POST requests, one with HLSB data for black and one with HLSB data for red.
 - `EPD_3in7`: receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to the device sequentially for a 4 color result.)
-- `EPD_5in65`: receives 8 POST requests. They contain data for one large HMSB buffer split into 8 horizontal bands (since the Pico is too memory constrained to handle them all at once).
+- `EPD_4in2`: receives 2 POST requests, one with HLSB data for black and dark gray vs white and light gray, and one with HLSB data for black and light gray vs white and dark gray. (Both are sent to the device sequentially for a 4 color result.)
+- `EPD_5in65`: receives 8 POST requests. They contain data for one large HMSB buffer split into 8 horizontal bands (due to memory constraints).
+- `EPD_7in5B`: receives 8 POST requests. Each HLSB buffer is split into 4 horizontal bands (due to memory constraints), four with data for black and four with data for red.
 
 POST endpoints are of the form `/block0`, `/block1`, etc. and the sequence is expected by the server.
 Requests received in an unexpected order result in an HTTP 409 error sent to the client, which will retry up to several
@@ -140,14 +160,16 @@ Once the required amount of POST requests have been processed and streamed to th
 # TODO
 
 These are codes to be used for various WaveShare displays (named after their example scripts).
-So far this project only supports e-ink devices I actually have.
+So far this project only supports e-ink devices I actually have. There is code for EPD-7in5B but I haven't tried running it, so it probably has a typo.
 
+- [ ] EPD_2in13: 2.13 inch display
+- [x] EPD_2in13B: the red/black version
 - [ ] EPD_2in66: 2.66 inch display
 - [ ] EPD_2in66B: the red/black version
 - [ ] EPD_2in9: 2 color 2.9 inch 4-color grayscale display
 - [x] EPD_2in9B: the red/black version
 - [x] EPD_3in7: 3.7 inch 4-color grayscale display
-- [ ] EPD_4in2: 4.2 inch 4-color grayscale display
+- [x] EPD_4in2: 4.2 inch 4-color grayscale display
 - [ ] EPD_4in2B: the red/black version
 - [x] EPD_5in65: 7-color ACeP display
 - [ ] EPD_5in83: 5.83 inch 4-color grayscale display
@@ -159,5 +181,6 @@ Will check these off as support gets added.
 
 Additional TODOs:
 
+- [ ] Fix all bugs with tools in the toolbar
 - [ ] Support touch events on mobile devices
 - [ ] Improve Floyd-Steinberg palette color selection

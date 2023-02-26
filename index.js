@@ -1,11 +1,21 @@
-main = function(device_txt) {
-    console.log('device_txt', device_txt);
+main = function(device) {
+    console.log('device', device);
 
     let EPD_WIDTH = 128;
     let EPD_HEIGHT = 296;
     let AVAILABLE_COLORS = ['white', 'black'];
 
-    if (device_txt === 'EPD_2in9_B') {
+    if (device === 'EPD_2in13_B') {
+        // 104x212 white/black/red
+        // Two MONO_HLSB buffers (black first, red second)
+        // buffer_black = bytearray(self.height * self.width // 8)
+        // buffer_red = bytearray(self.height * self.width // 8)
+        // imageblack = framebuf.FrameBuffer(self.buffer_black, self.width, self.height, framebuf.MONO_HLSB)
+        // imagered = framebuf.FrameBuffer(self.buffer_red, self.width, self.height, framebuf.MONO_HLSB)
+        EPD_WIDTH = 104
+        EPD_HEIGHT = 212
+        AVAILABLE_COLORS = ['white', 'black', 'red'];
+    } else if (device === 'EPD_2in9_B') {
         // 128x296 white/black/red
         // Two MONO_HLSB buffers (black first, red second)
         // buffer_black = bytearray(self.height * self.width // 8)
@@ -15,35 +25,35 @@ main = function(device_txt) {
         EPD_WIDTH = 128;
         EPD_HEIGHT = 296;
         AVAILABLE_COLORS = ['white', 'black', 'red'];
-    } else if (device_txt === 'EPD_3in7') {
+    } else if (device === 'EPD_3in7') {
         // One single GS2_HMSB buffer, 4 colors.
         // buffer_4Gray = bytearray(self.height * self.width // 4)
         // FrameBuffer(buffer_4Gray, self.width, self.height, framebuf.GS2_HMSB)
         EPD_WIDTH = 280;
         EPD_HEIGHT = 480;
         AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black'];
-    } else if (device_txt === 'EPD_4in2') {
+    } else if (device === 'EPD_4in2') {
         // One single GS2_HMSB buffer, 4 colors.
         // buffer_4Gray = bytearray(self.height * self.width // 4)
         // FrameBuffer(self.buffer_4Gray, self.width, self.height, framebuf.GS2_HMSB)
         EPD_WIDTH = 400;
         EPD_HEIGHT = 300;
         AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black']
-    } else if (device_txt === 'EPD_5in65') {
+    } else if (device === 'EPD_5in65') {
         // GS4_HMSB buffer, width * height // 2 bytes
         // buffer = bytearray(self.height * self.width // 2)
         // FrameBuffer(buffer, self.width, self.height, framebuf.GS4_HMSB)
         EPD_WIDTH = 600;
         EPD_HEIGHT = 448;
         AVAILABLE_COLORS = ['white', 'blank', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
-    } else if (device_txt === 'EPD_7in5_B') {
+    } else if (device === 'EPD_7in5_B') {
         // Two MONO HLSB buffers (black first, red second)
         EPD_WIDTH = 800
         EPD_HEIGHT = 480
         AVAILABLE_COLORS = ['white', 'black', 'red']
     }
 
-   document.getElementById('caption').innerHTML = device_txt;
+   document.getElementById('caption').innerHTML = device;
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],
@@ -146,7 +156,7 @@ main = function(device_txt) {
         UPLOAD_OPERATION: 'UPLOAD_OPERATION',
     };
 
-    let appMode = device_txt ? APP_MODES.DEFAULT : APP_MODES.UNINITIALIZED;
+    let appMode = device ? APP_MODES.DEFAULT : APP_MODES.UNINITIALIZED;
     setAppMode(appMode);
 
     let pastedImage = undefined;
@@ -608,19 +618,19 @@ main = function(device_txt) {
     async function uploadCanvas() {
         setAppMode(APP_MODES.UPLOAD_OPERATION);
         printModal.style.display = 'block';
-        if (device_txt === 'EPD_2in9_B') {
+        if (device === 'EPD_2in13_B' || device === 'EPD_2in9_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas);
             sequentialPost([black, red]);
-        } else if (device_txt === 'EPD_3in7') {
+        } else if (device === 'EPD_3in7') {
             const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas);
             sequentialPost(b64_buffers);
-        } else if (device_txt === 'EPD_4in2') {
+        } else if (device === 'EPD_4in2') {
             const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas, true);
             sequentialPost(b64_buffers);
-        } else if (device_txt === 'EPD_5in65') {
+        } else if (device === 'EPD_5in65') {
             const b64_buffers = extractHMSBFromCanvas(mainCanvas);
             sequentialPost(b64_buffers);
-        } else if (device_txt === 'EPD_7in5_B') {
+        } else if (device === 'EPD_7in5_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas)
             // These are each 48000 bytes; split each into four chunks of 12000
             quarter = black.length / 4
