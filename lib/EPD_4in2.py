@@ -249,7 +249,7 @@ class EPD_4in2(EPD):
 
     def init(self, *args):
         # 4 gray init
-        print('4 gray init...')
+        self.reset()
         self.send_command(0x01)  # POWER SETTING
         self.send_data (0x03)
         self.send_data (0x00)  # VGH=20V,VGL=-20V
@@ -257,39 +257,31 @@ class EPD_4in2(EPD):
         self.send_data (0x2b)  # VDL=-15V
         self.send_data (0x13)
 
-        print('booster')
         self.send_command(0x06)  # booster soft start
         self.send_data (0x17)  # A
         self.send_data (0x17)  # B
         self.send_data (0x17)  # C
 
-        print('send_command 0x04')
         self.send_command(0x04)
         self.ReadBusy()
 
-        print('Panel setting')
         self.send_command(0x00)  # panel setting
         self.send_data(0x3f)  # KW-3f   KWR-2F	BWROTP 0f	BWOTP 1f
 
-        print('PLL setting')
         self.send_command(0x30)  # PLL setting
         self.send_data (0x3c)  # 100hz
 
-        print('Resolution setting')
         self.send_command(0x61)  # resolution setting
         self.send_data (0x01)  # 400
         self.send_data (0x90)
         self.send_data (0x01)  # 300
         self.send_data (0x2c)
 
-        print('vcom_DC setting')
         self.send_command(0x82)  # vcom_DC setting
         self.send_data (0x12)
 
-        print('vcom and data interval setting')
         self.send_command(0X50)  # VCOM AND DATA INTERVAL SETTING
         self.send_data(0x97)
-        print('init() finished')
 
     def clear(self):
         high = self.height
@@ -386,7 +378,6 @@ class EPD_4in2(EPD):
 
     def displayMessage(self, *args):
         self.init()
-        framebuf.FrameBuffer(self.buffer_4Gray, self.width, self.height, framebuf.GS2_HLSB)
         # Create a small framebuffer to display several lines of text.
         # This is a MONO_HLSB buffer (1 bit per pixel) for displaying white/black image (no gray1/gray2).
 
