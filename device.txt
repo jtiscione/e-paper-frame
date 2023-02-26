@@ -1,8 +1,9 @@
 # Uncomment the appropriate line for the given device:
 
-# device = EPD_2in9_B  # 2.9 inch red/black/white display
-# device = EPD_3in7  # 3.7 inch black / dark gray / light gray / white display
-device = EPD_5in65  # 5.65 inch 7 color display
+# device = EPD_2in9_B       # 2.9 inch red/black/white display
+# device = EPD_3in7         # 3.7 inch black / dark gray / light gray / white display
+# device = EPD_4in2         # 4.2 inch black / dark gray / light gray / white display
+device = EPD_5in65          # 5.65 inch 7 color display
 
 # Country code
 

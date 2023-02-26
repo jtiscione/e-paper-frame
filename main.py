@@ -121,6 +121,9 @@ if device == 'EPD_2in9_B':
 elif device == 'EPD_3in7':
     from EPD_3in7 import EPD_3in7
     epd = EPD_3in7()
+elif device == 'EPD_4in2':
+    from EPD_4in2 import EPD_4in2
+    epd = EPD_4in2()
 elif device == 'EPD_5in65':
     from EPD_5in65 import EPD_5in65
     epd = EPD_5in65()
@@ -135,7 +138,15 @@ def display_lines(*args):
     epd.sleep()
 
 try:
-    wlan, s = bootstrap_wifi(display_lines, led)
+    # Acquire wireless connection and a socket listening on port 80.
+    # Once connected, it will pass the IP address to display_lines() before returning.
+    # 
+    # This method will NOT return if the wi-fi network is not set up.
+    # Instead, it will create a wireless access point, set up a little HTTP server,
+    # pass the network name, network password, and HTTP server IP to display_lines,
+    # serve a little HTML form to gather the wi-fi information, display a message
+    # telling the user to power cycle the device, and then enter an endless loop.
+    wlan, s = bootstrap_wifi(display_lines, led, 'epaper-', 'inky-')
 except RuntimeError:
     # Flash SOS to LED indefinitely
     while True:

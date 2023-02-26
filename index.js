@@ -22,6 +22,13 @@ main = function(device_txt) {
         EPD_WIDTH = 280;
         EPD_HEIGHT = 480;
         AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black'];
+    } else if (device_txt === 'EPD_4in2') {
+        // One single GS2_HMSB buffer, 4 colors.
+        // buffer_4Gray = bytearray(self.height * self.width // 4)
+        // FrameBuffer(self.buffer_4Gray, self.width, self.height, framebuf.GS2_HMSB)
+        EPD_WIDTH = 400;
+        EPD_HEIGHT = 300;
+        AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black']
     } else if (device_txt === 'EPD_5in65') {
         // GS4_HMSB buffer, width * height // 2 bytes
         // buffer = bytearray(self.height * self.width // 2)
@@ -595,7 +602,7 @@ main = function(device_txt) {
         if (device_txt === 'EPD_2in9_B') {
             const [black, red] = extractHLSBFromCanvasBlackRed(mainCanvas);
             sequentialPost([black, red]);
-        } else if (device_txt === 'EPD_3in7') {
+        } else if (device_txt === 'EPD_3in7' || device_txt === 'EPD_4in2') {
             const b64_buffers = extractHLSBFromCanvasGray4(mainCanvas);
             sequentialPost(b64_buffers);
         } else if (device_txt === 'EPD_5in65') {
