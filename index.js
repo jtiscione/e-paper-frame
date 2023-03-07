@@ -4,6 +4,7 @@ main = function(device) {
     let EPD_WIDTH = 128;
     let EPD_HEIGHT = 296;
     let AVAILABLE_COLORS = ['white', 'black'];
+    let CAPTION = device
 
     if (device === 'EPD_2in13_B') {
         // 104x212 white/black/red
@@ -15,6 +16,7 @@ main = function(device) {
         EPD_WIDTH = 104
         EPD_HEIGHT = 212
         AVAILABLE_COLORS = ['white', 'black', 'red'];
+        CAPTION = '104x212 red/black';
     } else if (device === 'EPD_2in9_B') {
         // 128x296 white/black/red
         // Two MONO_HLSB buffers (black first, red second)
@@ -25,6 +27,7 @@ main = function(device) {
         EPD_WIDTH = 128;
         EPD_HEIGHT = 296;
         AVAILABLE_COLORS = ['white', 'black', 'red'];
+        CAPTION = '128x296 red/black';
     } else if (device === 'EPD_3in7') {
         // One single GS2_HMSB buffer, 4 colors.
         // buffer_4Gray = bytearray(self.height * self.width // 4)
@@ -32,6 +35,7 @@ main = function(device) {
         EPD_WIDTH = 280;
         EPD_HEIGHT = 480;
         AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black'];
+        CAPTION = '280x480 four color display';
     } else if (device === 'EPD_4in2') {
         // One single GS2_HMSB buffer, 4 colors.
         // buffer_4Gray = bytearray(self.height * self.width // 4)
@@ -39,6 +43,7 @@ main = function(device) {
         EPD_WIDTH = 400;
         EPD_HEIGHT = 300;
         AVAILABLE_COLORS = ['white', 'lightgrey', 'darkgrey', 'black']
+        CAPTION = '400x300 four color display';
     } else if (device === 'EPD_5in65') {
         // GS4_HMSB buffer, width * height // 2 bytes
         // buffer = bytearray(self.height * self.width // 2)
@@ -46,14 +51,16 @@ main = function(device) {
         EPD_WIDTH = 600;
         EPD_HEIGHT = 448;
         AVAILABLE_COLORS = ['white', 'blank', 'black', 'red', 'orange', 'yellow', 'green', 'blue'];
+        CAPTION = '600x448 7 color display';
     } else if (device === 'EPD_7in5_B') {
         // Two MONO HLSB buffers (black first, red second)
-        EPD_WIDTH = 800
-        EPD_HEIGHT = 480
-        AVAILABLE_COLORS = ['white', 'black', 'red']
+        EPD_WIDTH = 800;
+        EPD_HEIGHT = 480;
+        AVAILABLE_COLORS = ['white', 'black', 'red'];
+        CAPTION = '800x480 red/black display';
     }
 
-   document.getElementById('caption').innerHTML = device;
+   document.getElementById('caption').innerHTML = CAPTION;
 
     const PALETTE_COLORS = {
         white: [0xff, 0xff, 0xff],

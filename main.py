@@ -56,6 +56,26 @@ rp2.country(country)
 # General setup
 led.on()
 
+epd = None
+if device == 'EPD_2in13_B':
+    from EPD_2in13_B import EPD_2in13_B
+    epd = EPD_2in13_B()
+if device == 'EPD_2in9_B':
+    from EPD_2in9_B import EPD_2in9_B
+    epd = EPD_2in9_B()
+elif device == 'EPD_3in7':
+    from EPD_3in7 import EPD_3in7
+    epd = EPD_3in7()
+elif device == 'EPD_4in2':
+    from EPD_4in2 import EPD_4in2
+    epd = EPD_4in2()
+elif device == 'EPD_5in65':
+    from EPD_5in65 import EPD_5in65
+    epd = EPD_5in65()
+elif device == 'EPD_7in5_B':
+    from EPD_7in5_B import EPD_7in5_B
+    epd = EPD_7in5_B()
+
 # USER BUTTONS - These are completely optional.
 button_0 = None # If pushed, will display IP address on display
 button_1 = None # Push to call sys.exit()
@@ -77,10 +97,14 @@ elif device == 'EPD_4in2':
     button_0 = Pin(15, Pin.IN, Pin.PULL_UP)
     button_1 = Pin(17, Pin.IN, Pin.PULL_UP)
 
-led.off()
 
-# Special function of button_0: if it's being pressed on startup, delete any cached connection info and quit.
+# These flags will be checked after every socket timeout while we're waiting for a connection
+button_0_flag = False
+button_1_flag = False
+
+# Special function of button_0: if it's being pressed on startup, delete any cached connection info
 if button_0 is not None and button_0.value() == 0:
+    button_0_flag = True
     try:
         print('Removing last-ip.txt.')
         os.remove('./last-ip.txt')
@@ -92,12 +116,24 @@ if button_0 is not None and button_0.value() == 0:
         os.remove('./wi-fi.conf')
     except Exception as e:
         pass
+
+# Special function of button_1: if it's being pressed on startup, clear the screen
+if button_1 is not None and button_1_value() == 0:
+    button_1_flag = True
+    try:
+        print('Initializing screen.')
+        epd.init()
+        print('Clearing screen.')
+        epd.clear()
+        epd.delay_ms(1000)
+        epd.sleep()
+    except Exception as e:
+        pass
+
+# If either button_0 or button_1 was being pressed on startup, quit.
+if button_1_flag or button_2_flag:
     print('Exiting.')
     sys.exit()
-
-# These flags will be checked after every socket timeout while we're waiting for a connection
-button_0_flag = False
-button_1_flag = False
 
 def callback(pin):
     global button_0_flag, button_1_flag
@@ -114,28 +150,6 @@ if button_1 is not None:
     button_1.irq(trigger=Pin.IRQ_FALLING, handler=callback)
 if button_2 is not None:
     button_2.irq(trigger=Pin.IRQ_FALLING, handler=callback)
-
-led.on()
-
-epd = None
-if device == 'EPD_2in13_B':
-    from EPD_2in13_B import EPD_2in13_B
-    epd = EPD_2in13_B()
-if device == 'EPD_2in9_B':
-    from EPD_2in9_B import EPD_2in9_B
-    epd = EPD_2in9_B()
-elif device == 'EPD_3in7':
-    from EPD_3in7 import EPD_3in7
-    epd = EPD_3in7()
-elif device == 'EPD_4in2':
-    from EPD_4in2 import EPD_4in2
-    epd = EPD_4in2()
-elif device == 'EPD_5in65':
-    from EPD_5in65 import EPD_5in65
-    epd = EPD_5in65()
-elif device == 'EPD_7in5_B':
-    from EPD_7in5_B import EPD_7in5_B
-    epd = EPD_7in5_B()
 
 led.off()
 
