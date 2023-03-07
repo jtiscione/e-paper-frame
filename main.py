@@ -118,7 +118,7 @@ if button_0 is not None and button_0.value() == 0:
         pass
 
 # Special function of button_1: if it's being pressed on startup, clear the screen
-if button_1 is not None and button_1_value() == 0:
+if button_1 is not None and button_1.value() == 0:
     button_1_flag = True
     try:
         print('Initializing screen.')
