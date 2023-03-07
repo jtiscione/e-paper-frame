@@ -131,7 +131,7 @@ if button_1 is not None and button_1_value() == 0:
         pass
 
 # If either button_0 or button_1 was being pressed on startup, quit.
-if button_1_flag or button_2_flag:
+if button_0_flag or button_1_flag:
     print('Exiting.')
     sys.exit()
 
