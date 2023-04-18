@@ -69,7 +69,7 @@ main = function(device) {
         darkgrey: [0xaa, 0xaa, 0xaa],
         black: [0x00, 0x00, 0x00],
         red: [0xff, 0x00, 0x00],
-        orange: [0xf1, 0x65, 0x29],
+        orange: [0xff, 0xa5, 0x00],
         yellow: [0xff, 0xff, 0x00],
         green: [0x00, 0xff, 0x00],
         blue: [0x00, 0x00, 0xff],
@@ -171,7 +171,7 @@ main = function(device) {
 
     let selectedColor = 'black';
 
-    const style = (color) => (color === 'blank' ? '#eeeeee' : color);
+    const style = (color) => (color === 'blank' ? '#eeeeee' : (color === 'green' ? '#00ff00' : color));
 
     let strokeWidth = parseInt(strokeWidthSlider.value);
 
